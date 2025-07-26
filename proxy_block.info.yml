@@ -1,0 +1,5 @@
+name: Proxy Block
+description: Renders a different block instead.
+type: module
+core_version_requirement: ^10 || ^11
+package: A/B Testing
