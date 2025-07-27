@@ -169,6 +169,17 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     return $form;
   }
 
+  /**
+   * Gets the target from user input.
+   *
+   * @param array $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array|null
+   *   The target.
+   */
   private function getSelectedTargetFromFormState(array $form, FormStateInterface $form_state): ?array {
     $triggering_element = $form_state->getTriggeringElement();
     if (
@@ -182,6 +193,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     }
     return NULL;
   }
+
   /**
    * Ajax callback for target block selection.
    *
@@ -232,15 +244,16 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         }
       }
 
-      // If the block implements PluginFormInterface, build its configuration form.
+      // If the block implements PluginFormInterface, build its configuration
+      // form.
       if ($target_block instanceof PluginFormInterface) {
         $config_form = $target_block->buildConfigurationForm([], $form_state);
 
         $form_elements = [
-            '#type' => 'details',
-            '#title' => $this->t('Block Configuration'),
-            '#open' => TRUE,
-          ] + $config_form;
+          '#type' => 'details',
+          '#title' => $this->t('Block Configuration'),
+          '#open' => TRUE,
+        ] + $config_form;
       }
       elseif (empty($form_elements)) {
         // If no configuration form and no contexts, show informational message.
@@ -314,7 +327,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $current_mapping = $config['context_mapping'] ?? [];
 
     $context_fields = array_map(
-      function($definition, $context_name) use ($context_options, $current_mapping) {
+      function ($definition, $context_name) use ($context_options, $current_mapping) {
         $field = [
           '#type' => 'select',
           '#title' => $definition->getLabel() ?: $context_name,
@@ -353,7 +366,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         if ($target_block instanceof PluginFormInterface) {
           // Skip subform validation for now to avoid SubformState issues
-          // The target block configuration will be validated during submission
+          // The target block configuration will be validated during submission.
         }
 
         // Validate context mapping if the block requires contexts.
@@ -370,7 +383,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
           array_walk(
             $missing_contexts,
-            function($definition, $context_name) use ($form_state) {
+            function ($definition, $context_name) use ($form_state) {
               $form_state->setErrorByName("context_mapping][$context_name]", $this->t('Context mapping for @context is required.', [
                 '@context' => $definition->getLabel() ?: $context_name,
               ]));
@@ -404,7 +417,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         $target_block = $this->blockManager->createInstance($target_plugin_id, $block_config);
 
         if ($target_block instanceof PluginFormInterface) {
-          // Get target block configuration from form values
+          // Get target block configuration from form values.
           $target_block->setConfiguration($block_config + $target_block->getConfiguration());
           $this->configuration['target_block']['config'] = $target_block->getConfiguration();
         }
@@ -534,7 +547,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
       $mapped_contexts = array_filter(
         array_map(
-          function($target_context_name) use ($context_mapping, $proxy_contexts) {
+          function ($target_context_name) use ($context_mapping, $proxy_contexts) {
             $source_context_name = $context_mapping[$target_context_name] ?? $target_context_name;
             return isset($proxy_contexts[$source_context_name])
               ? [$target_context_name, $proxy_contexts[$source_context_name]]

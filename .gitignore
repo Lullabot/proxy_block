@@ -2,6 +2,7 @@
 /.idea
 /build
 /composer.lock
+/package-lock.json
 /node_modules
 phpunit.xml
 
@@ -9,3 +10,4 @@ phpunit.xml
 # Ignore local Claude files.
 /.claude/settings.local.json
 /CLAUDE.local.md
+/.ai/agent-context.local.md

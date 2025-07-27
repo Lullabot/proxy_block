@@ -1,268 +1,282 @@
- # Proxy Block
+# Proxy Block
 
- A Drupal module that provides a block plugin that can render any other block plugin the system. This allows for dynamic block selection and configuration through an
+A Drupal module that provides a block plugin that can render any other block plugin the system. This allows for dynamic block selection and configuration through an
 administrative interface.
 
- ## Overview
+## Overview
 
 The proxy block is likely only useful for the A/B Blocks sub-module in the [A/B Tests](https://www.github.com/Lullabot/ab_tests) project.
 
- ## Features
+## Features
 
- - **Dynamic Block Selection**: Choose any available block plugin from a dropdown
- - **AJAX Configuration**: Real-time configuration forms that update based on block
-selection
- - **Context Mapping**: Pass page contexts to target blocks that require them
- - **Access Control**: Respects target block access permissions
- - **Cache Integration**: Properly handles cache metadata from target blocks
- - **Layout Builder Compatible**: Works seamlessly in Layout Builder and traditional
-Block UI
+- **Dynamic Block Selection**: Choose any available block plugin from a dropdown
+- **AJAX Configuration**: Real-time configuration forms that update based on block
+  selection
+- **Context Mapping**: Pass page contexts to target blocks that require them
+- **Access Control**: Respects target block access permissions
+- **Cache Integration**: Properly handles cache metadata from target blocks
+- **Layout Builder Compatible**: Works seamlessly in Layout Builder and traditional
+  Block UI
 
- ## Use Cases
+## Use Cases
 
- - **A/B Testing**: Switch between different blocks for testing
- - **Conditional Block Display**: Show different blocks based on configuration
- - **Block Reusability**: Use the same block configuration in multiple places
- - **Dynamic Content**: Change block content without rebuilding layouts
+- **A/B Testing**: Switch between different blocks for testing
+- **Conditional Block Display**: Show different blocks based on configuration
+- **Block Reusability**: Use the same block configuration in multiple places
+- **Dynamic Content**: Change block content without rebuilding layouts
 
- ## User Interface
+## User Interface
 
- ### Block Configuration
+### Block Configuration
 
- 1. **Target Block Selection**
+1.  **Target Block Selection**
     - Dropdown list of all available block plugins (excluding the proxy block itself)
     - Option to select "Do not render any block" to hide the block completely
     - AJAX-powered selection that immediately updates the configuration form
 
- 2. **Target Block Configuration**
+2.  **Target Block Configuration**
     - Dynamic configuration form that appears after selecting a target block
     - Shows the same configuration options as the target block would normally have
     - Updated in real-time via AJAX when changing target block selection
     - Displays informational message for blocks without configuration options
 
- 3. **Context Mapping** (when applicable)
+3.  **Context Mapping** (when applicable)
     - Appears for blocks that require contexts (e.g., node, user, term contexts)
     - Dropdown for each required context to map to available page contexts
     - Required context mappings are marked as mandatory
     - Validates that all required contexts are properly mapped
 
- ### Administrative Experience
+### Administrative Experience
 
- The administrative interface follows Drupal's standard block configuration patterns:
+The administrative interface follows Drupal's standard block configuration patterns:
 
- - **Block Library**: Available through standard block placement UI
- - **Layout Builder**: Can be added as any other block in Layout Builder
- - **Configuration**: Accessed through standard block configuration forms
- - **Validation**: Real-time validation of target block configuration and context
-mapping
+- **Block Library**: Available through standard block placement UI
+- **Layout Builder**: Can be added as any other block in Layout Builder
+- **Configuration**: Accessed through standard block configuration forms
+- **Validation**: Real-time validation of target block configuration and context
+  mapping
 
- ## Technical Architecture
+## Technical Architecture
 
- ### Core Components
+### Core Components
 
- #### ProxyBlock Plugin (`src/Plugin/Block/ProxyBlock.php`)
+#### ProxyBlock Plugin (`src/Plugin/Block/ProxyBlock.php`)
 
- The main block plugin that implements the proxy functionality:
+The main block plugin that implements the proxy functionality:
 
- - **Extends**: `BlockBase`
- - **Implements**: `ContainerFactoryPluginInterface`, `ContextAwarePluginInterface`
- - **Pattern**: Uses final class with constructor promotion and dependency injection
+- **Extends**: `BlockBase`
+- **Implements**: `ContainerFactoryPluginInterface`, `ContextAwarePluginInterface`
+- **Pattern**: Uses final class with constructor promotion and dependency injection
 
- ### Render Logic
+### Render Logic
 
- #### Initialization Phase
+#### Initialization Phase
 
- 1. **Block Creation**: Proxy block is instantiated by Drupal's block system
- 2. **Service Injection**: Required services (BlockManager, Logger, CurrentUser) are
-injected
- 3. **Configuration Loading**: Saved configuration is loaded from storage
+1.  **Block Creation**: Proxy block is instantiated by Drupal's block system
+2.  **Service Injection**: Required services (BlockManager, Logger, CurrentUser) are
+    injected
+3.  **Configuration Loading**: Saved configuration is loaded from storage
 
- #### Configuration Phase
+#### Configuration Phase
 
- 1. **Form Building**: Administrative configuration form is built
- 2. **Target Selection**: Available block plugins are enumerated and presented
- 3. **AJAX Handling**: Target block selection triggers AJAX callback
- 4. **Dynamic Form**: Target block configuration form is dynamically loaded
- 5. **Context Discovery**: Required contexts for target block are identified
- 6. **Validation**: Form submission validates target block configuration and context
-mapping
+1.  **Form Building**: Administrative configuration form is built
+2.  **Target Selection**: Available block plugins are enumerated and presented
+3.  **AJAX Handling**: Target block selection triggers AJAX callback
+4.  **Dynamic Form**: Target block configuration form is dynamically loaded
+5.  **Context Discovery**: Required contexts for target block are identified
+6.  **Validation**: Form submission validates target block configuration and context
+    mapping
 
- #### Render Phase
+#### Render Phase
 
- 1. **Target Block Creation**:
+1.  **Target Block Creation**:
+
     ```php
     $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
     ```
 
- 2. **Context Mapping**:
+2.  **Context Mapping**:
+
     ```php
     if ($target_block instanceof ContextAwarePluginInterface) {
       $this->passContextsToTargetBlock($target_block);
     }
     ```
 
- 3. **Access Control**:
+3.  **Access Control**:
+
     ```php
     $access_result = $target_block->access($this->currentUser, TRUE);
     ```
 
- 4. **Content Generation**:
+4.  **Content Generation**:
+
     ```php
     $build = $target_block->build();
     ```
 
- 5. **Cache Metadata**:
+5.  **Cache Metadata**:
     ```php
     $this->bubbleTargetBlockCacheMetadata($build, $target_block);
     ```
 
- ### Context Handling
+### Context Handling
 
- The module handles context passing through a sophisticated mapping system:
+The module handles context passing through a sophisticated mapping system:
 
- #### Context Discovery
+#### Context Discovery
 
- - Inspects target block's context definitions using `getContextDefinitions()`
- - Identifies required vs optional contexts
- - Builds mapping form for each context requirement
+- Inspects target block's context definitions using `getContextDefinitions()`
+- Identifies required vs optional contexts
+- Builds mapping form for each context requirement
 
- #### Context Mapping
+#### Context Mapping
 
- - Maps proxy block's available contexts to target block's required contexts
- - Supports both automatic mapping (same context name) and manual mapping
- - Validates that all required contexts are mapped before allowing form submission
+- Maps proxy block's available contexts to target block's required contexts
+- Supports both automatic mapping (same context name) and manual mapping
+- Validates that all required contexts are mapped before allowing form submission
 
- #### Context Application
+#### Context Application
 
- ```php
- protected function passContextsToTargetBlock(ContextAwarePluginInterface
+```php
+protected function passContextsToTargetBlock(ContextAwarePluginInterface
 $target_block): void {
-   $proxy_contexts = $this->getContexts();
-   $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
+  $proxy_contexts = $this->getContexts();
+  $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
 
-   // Map contexts based on configuration
-   foreach ($target_context_definitions as $name => $definition) {
-     $source_name = $context_mapping[$name] ?? $name;
-     if (isset($proxy_contexts[$source_name])) {
-       $target_block->setContext($name, $proxy_contexts[$source_name]);
-     }
-   }
- }
- ```
+  // Map contexts based on configuration
+  foreach ($target_context_definitions as $name => $definition) {
+    $source_name = $context_mapping[$name] ?? $name;
+    if (isset($proxy_contexts[$source_name])) {
+      $target_block->setContext($name, $proxy_contexts[$source_name]);
+    }
+  }
+}
+```
 
- ### Cache Integration
+### Cache Integration
 
- The module properly handles cache metadata to ensure optimal performance:
+The module properly handles cache metadata to ensure optimal performance:
 
- #### Cache Contexts
- - Merges proxy block cache contexts with target block cache contexts
- - Ensures cache varies on all relevant parameters
+#### Cache Contexts
 
- #### Cache Tags
- - Bubbles target block cache tags to proxy block
- - Adds proxy-specific cache tags for invalidation
+- Merges proxy block cache contexts with target block cache contexts
+- Ensures cache varies on all relevant parameters
 
- #### Cache Max Age
- - Uses most restrictive max-age between proxy and target blocks
- - Ensures proper cache invalidation timing
+#### Cache Tags
 
- ### Error Handling
+- Bubbles target block cache tags to proxy block
+- Adds proxy-specific cache tags for invalidation
 
- The module implements comprehensive error handling:
+#### Cache Max Age
 
- #### Plugin Creation Errors
- - Catches `PluginException` during target block instantiation
- - Logs errors with context information
- - Gracefully degrades to empty render array
+- Uses most restrictive max-age between proxy and target blocks
+- Ensures proper cache invalidation timing
 
- #### Context Errors
- - Catches `ContextException` during context mapping
- - Logs context-related errors
- - Continues execution with available contexts
+### Error Handling
 
- #### Form Errors
- - Validates target block configuration
- - Validates required context mappings
- - Provides user-friendly error messages
+The module implements comprehensive error handling:
 
- ## Development Patterns
+#### Plugin Creation Errors
 
- This module follows several advanced Drupal development patterns:
+- Catches `PluginException` during target block instantiation
+- Logs errors with context information
+- Gracefully degrades to empty render array
 
- ### Functional Programming
- - Uses `array_map`, `array_filter`, `array_reduce` instead of foreach loops
- - Implements functional composition for data transformation
- - Uses arrow functions for simple transformations
+#### Context Errors
 
- ### Polymorphism Over Conditionals
- - Uses strategy pattern for different block types
- - Leverages PHP 8 match expressions for clean branching
- - Implements interface-based behavior detection
+- Catches `ContextException` during context mapping
+- Logs context-related errors
+- Continues execution with available contexts
 
- ### Dependency Injection
- - Constructor promotion for clean dependency injection
- - Auto-wiring of services through ContainerFactoryPluginInterface
- - Minimal service coupling
+#### Form Errors
 
- ### Modern PHP Features
- - PHP 8.1+ features including constructor promotion
- - Strict typing with `declare(strict_types=1)`
- - Final classes for performance and encapsulation
- - Union types for intersection constraints
+- Validates target block configuration
+- Validates required context mappings
+- Provides user-friendly error messages
 
- ## Installation
+## Development Patterns
 
- 1. Place module in `modules/contrib/proxy_block` or install via Composer
- 2. Enable the module: `drush en proxy_block`
- 3. Clear caches: `drush cr`
- 4. The "Proxy Block" will be available in the block library
+This module follows several advanced Drupal development patterns:
 
- ## Configuration
+### Functional Programming
 
- No global configuration is required. Each proxy block instance is configured
+- Uses `array_map`, `array_filter`, `array_reduce` instead of foreach loops
+- Implements functional composition for data transformation
+- Uses arrow functions for simple transformations
+
+### Polymorphism Over Conditionals
+
+- Uses strategy pattern for different block types
+- Leverages PHP 8 match expressions for clean branching
+- Implements interface-based behavior detection
+
+### Dependency Injection
+
+- Constructor promotion for clean dependency injection
+- Auto-wiring of services through ContainerFactoryPluginInterface
+- Minimal service coupling
+
+### Modern PHP Features
+
+- PHP 8.1+ features including constructor promotion
+- Strict typing with `declare(strict_types=1)`
+- Final classes for performance and encapsulation
+- Union types for intersection constraints
+
+## Installation
+
+1.  Place module in `modules/contrib/proxy_block` or install via Composer
+2.  Enable the module: `drush en proxy_block`
+3.  Clear caches: `drush cr`
+4.  The "Proxy Block" will be available in the block library
+
+## Configuration
+
+No global configuration is required. Each proxy block instance is configured
 individually through the standard Drupal block configuration interface.
 
- ## Compatibility
+## Compatibility
 
- - **Drupal**: 10.x, 11.x
- - **PHP**: 8.1+
- - **Layout Builder**: Full compatibility
- - **Block UI**: Full compatibility
- - **Context System**: Full integration
+- **Drupal**: 10.x, 11.x
+- **PHP**: 8.1+
+- **Layout Builder**: Full compatibility
+- **Block UI**: Full compatibility
+- **Context System**: Full integration
 
- ## Limitations
+## Limitations
 
- - Only supports block plugins, not content blocks from the Block Library
- - Context mapping requires manual configuration for complex scenarios
- - Performance depends on target block performance characteristics
+- Only supports block plugins, not content blocks from the Block Library
+- Context mapping requires manual configuration for complex scenarios
+- Performance depends on target block performance characteristics
 
- ## Security Considerations
+## Security Considerations
 
- - Respects all target block access permissions
- - Does not bypass Drupal's security layer
- - Validates all user input through Drupal's form API
- - Logs security-relevant events for audit trails
+- Respects all target block access permissions
+- Does not bypass Drupal's security layer
+- Validates all user input through Drupal's form API
+- Logs security-relevant events for audit trails
 
- ## Performance
+## Performance
 
- - Lazy-loads target blocks only when needed
- - Properly caches target block output
- - Minimizes database queries through proper caching
- - Uses AJAX for responsive administrative interface
+- Lazy-loads target blocks only when needed
+- Properly caches target block output
+- Minimizes database queries through proper caching
+- Uses AJAX for responsive administrative interface
 
- ## Contributing
+## Contributing
 
- This module follows Drupal coding standards and modern PHP practices. When
+This module follows Drupal coding standards and modern PHP practices. When
 contributing:
 
- - Use final classes where possible
- - Implement constructor promotion
- - Favor functional programming patterns
- - Use polymorphism over conditional logic
- - Include comprehensive error handling
- - Write tests for all new functionality
+- Use final classes where possible
+- Implement constructor promotion
+- Favor functional programming patterns
+- Use polymorphism over conditional logic
+- Include comprehensive error handling
+- Write tests for all new functionality
 
- ## Support
+## Support
 
- For issues, feature requests, or contributions, please use the project's issue queue
+For issues, feature requests, or contributions, please use the project's issue queue
 on Drupal.org.
