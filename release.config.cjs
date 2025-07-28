@@ -4,8 +4,8 @@ module.exports = {
     [
       '@semantic-release/commit-analyzer',
       {
-        preset: 'conventionalcommits'
-      }
+        preset: 'conventionalcommits',
+      },
     ],
     '@semantic-release/release-notes-generator',
     '@semantic-release/github',
@@ -13,8 +13,9 @@ module.exports = {
       '@semantic-release/git',
       {
         assets: ['composer.json'],
-        message: 'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
-      }
-    ]
-  ]
+        message:
+          'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
+      },
+    ],
+  ],
 };
