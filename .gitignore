@@ -2,7 +2,6 @@
 /.idea
 /build
 /composer.lock
-/package-lock.json
 /node_modules
 phpunit.xml
 
