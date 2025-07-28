@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main, '*.x']
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  # Drupal CI Variables (based on drupal.org GitLab templates)
+  _TARGET_PHP: '8.3'
+  _TARGET_DB_TYPE: 'mariadb'
+  _PHPUNIT_CONCURRENT: '0'
+  _CONCURRENCY_THREADS: '32'
+  # Composer CI configuration
+  COMPOSER_NO_INTERACTION: '1'
+  COMPOSER_ALLOW_SUPERUSER: '1'
+  # PHPUnit test configuration
+  SIMPLETEST_DB: 'mysql://drupal:drupal@127.0.0.1:3306/drupal'
+  SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
+  BROWSERTEST_OUTPUT_DIRECTORY: '/tmp'
+  MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
+  SYMFONY_DEPRECATIONS_HELPER: ''
+
+jobs:
+  # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
+  test:
+    name: '🧪 Drupal (${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        drupal-core: ['10.5', '11.0']
+        php-version: ['8.3']
+        db-version: ['10.9']
+
+    services:
+      mariadb:
+        image: mariadb:${{ matrix.db-version }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: drupal
+          MYSQL_USER: drupal
+          MYSQL_PASSWORD: drupal
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: gd, pdo_mysql
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.drupal-core }}-${{ matrix.php-version }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.drupal-core }}-${{ matrix.php-version }}-
+            ${{ runner.os }}-composer-
+
+      - name: Create Drupal project
+        run: |
+          composer create-project drupal/recommended-project:^${{ matrix.drupal-core }} drupal --no-interaction
+          cd drupal
+
+          # Configure platform PHP version
+          composer config platform.php ${{ matrix.php-version }}
+
+          # Add essential development dependencies for Drupal testing
+          composer require --dev --no-interaction \
+            drupal/core-dev \
+            drush/drush \
+            phpstan/phpstan \
+            mglaman/phpstan-drupal \
+            phpstan/phpstan-deprecation-rules
+
+          composer dump-autoload
+
+      - name: Setup module
+        run: |
+          cd drupal
+          mkdir -p web/modules/contrib
+
+          # Copy module files excluding the drupal directory we just created
+          rsync -av --exclude='drupal' $GITHUB_WORKSPACE/ web/modules/contrib/proxy_block/
+
+          # Install module's dev dependencies (like drupal/coder)
+          cd web/modules/contrib/proxy_block
+          find . -type f
+          composer install --no-interaction --dev
+
+      - name: Run PHPCS
+        run: |
+          cd drupal/web/modules/contrib/proxy_block
+          composer run-script lint:check
+
+      - name: Install PHPStan
+        run: |
+          cd drupal/web/modules/contrib/proxy_block
+          composer config --no-plugins allow-plugins.phpstan/extension-installer true
+          composer install --dev
+          cd ../../../../../
+
+      - name: Run PHPStan
+        run: |
+          cd drupal/
+          php web/modules/contrib/proxy_block/vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
+
+      - name: Install Drupal
+        run: |
+          cd drupal
+          php vendor/bin/drush site-install standard \
+            --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
+            --account-name=admin \
+            --account-pass=admin \
+            --yes
+
+      - name: Enable module
+        run: |
+          cd drupal
+          php vendor/bin/drush cache:rebuild
+          php vendor/bin/drush pm:enable proxy_block --yes
+
+      - name: Copy deprecation ignore file
+        run: |
+          cp drupal/web/core/.deprecation-ignore.txt drupal/.deprecation-ignore.txt
+
+      - name: Setup Chrome (for functional-javascript tests)
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Start web server for functional tests
+        run: |
+          cd drupal
+          php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
+          sleep 2
+
+      - name: Run tests
+        run: |
+          cd drupal
+          vendor/bin/phpunit \
+            --configuration=web/core/phpunit.xml.dist \
+            web/modules/contrib/proxy_block/tests/
+
+  code-quality:
+    name: '🔍 Code Quality (ESLint, Stylelint, CSpell)'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node.js dependencies
+        run: npm install --include=dev
+
+      - name: Run Code Quality Checks
+        run: |
+          npm run check
