@@ -21,7 +21,7 @@ env:
   SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
   BROWSERTEST_OUTPUT_DIRECTORY: '/tmp'
   MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
-  SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=.deprecation-ignore.txt'
+  SYMFONY_DEPRECATIONS_HELPER: ''
 
 jobs:
   # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
