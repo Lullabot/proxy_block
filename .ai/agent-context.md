@@ -214,6 +214,7 @@ web/modules/contrib/proxy_block/
 The module includes composer and npm scripts for comprehensive code quality checks:
 
 #### PHP Code Quality
+
 ```bash
 # DDEV commands (when using DDEV local environment)
 ddev composer run-script lint:check
@@ -225,6 +226,7 @@ composer run-script lint:fix
 ```
 
 #### JavaScript/CSS/Spelling Code Quality
+
 ```bash
 # DDEV commands (when using DDEV local environment)
 ddev exec npm run check                    # Run all checks (JS, CSS, spelling)
@@ -260,7 +262,7 @@ composer run-script release
 ### Additional Development Tools
 
 - **PHPStan**: Static analysis configuration available in `phpstan.neon`
-- **PHPUnit**: Test configuration in `phpunit.xml.dist`  
+- **PHPUnit**: Test configuration in `phpunit.xml.dist`
 - **CSpell**: Spell checking configuration in `cspell.json`
 - **Semantic Release**: Automated releases via `release.config.cjs`
 - **ESLint/Prettier**: JavaScript code quality and formatting
