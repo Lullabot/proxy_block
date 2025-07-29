@@ -341,8 +341,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $contexts += $this->getLayoutBuilderContexts();
     }
     
-    // Add route-based contexts.
-    $contexts += $this->getRouteContexts();
+    // Route-based contexts are automatically discovered through getAvailableContexts() below.
     
     // Add entity contexts from current route.
     $contexts += $this->getEntityContextsFromRoute();
@@ -431,43 +430,6 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     return $contexts;
   }
 
-  /**
-   * Gets route-based contexts.
-   *
-   * @return array
-   *   Array of route-based contexts.
-   */
-  private function getRouteContexts(): array {
-    $contexts = [];
-    
-    try {
-      // Get common route contexts.
-      $route_context_ids = [
-        '@node.node_route_context',
-        '@user.current_user_context',
-        '@user.user_route_context',
-        '@taxonomy_term.taxonomy_term_route_context',
-      ];
-      
-      foreach ($route_context_ids as $context_id) {
-        try {
-          $route_contexts = $this->contextRepository->getRuntimeContexts([$context_id]);
-          $contexts += $route_contexts;
-        }
-        catch (\Exception $e) {
-          // Context not available, continue with next one.
-          continue;
-        }
-      }
-    }
-    catch (\Exception $e) {
-      $this->logger->debug('Route contexts not fully available: @message', [
-        '@message' => $e->getMessage(),
-      ]);
-    }
-    
-    return $contexts;
-  }
 
   /**
    * Gets entity contexts from current route parameters.
