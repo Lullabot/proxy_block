@@ -14,6 +14,16 @@ class TrivialFunctionalTrivialTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
+  protected static $modules = [
+    'system',
+    'user',
+    'block',
+    'proxy_block',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
   protected $defaultTheme = 'stark';
 
   /**

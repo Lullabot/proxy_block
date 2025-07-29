@@ -12,6 +12,16 @@ use Drupal\KernelTests\KernelTestBase;
 class TrivialKernelTrivialTest extends KernelTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected static $modules = [
+    'system',
+    'user',
+    'block',
+    'proxy_block',
+  ];
+
+  /**
    * Tests a trivial condition.
    *
    * @coversNothing

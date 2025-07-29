@@ -8,11 +8,9 @@ on:
     - cron: '0 6 * * *'
 
 env:
-  # Drupal CI Variables (based on drupal.org GitLab templates)
-  _TARGET_PHP: '8.3'
-  _TARGET_DB_TYPE: 'mariadb'
-  _PHPUNIT_CONCURRENT: '0'
-  _CONCURRENCY_THREADS: '32'
+  DRUPAL_ROOT: drupal-root
+  MODULE_NAME: ${{ github.event.repository.name }}
+  MODULE_PATH: web/modules/contrib/${{ github.event.repository.name }}
   # Composer CI configuration
   COMPOSER_NO_INTERACTION: '1'
   COMPOSER_ALLOW_SUPERUSER: '1'
@@ -20,8 +18,8 @@ env:
   SIMPLETEST_DB: 'mysql://drupal:drupal@127.0.0.1:3306/drupal'
   SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
   BROWSERTEST_OUTPUT_DIRECTORY: '/tmp'
-  MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
-  SYMFONY_DEPRECATIONS_HELPER: ''
+  MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
+  SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
 jobs:
   # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
@@ -31,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        drupal-core: ['10.5', '11.0']
+        drupal-core: ['10', '11']
         php-version: ['8.3']
         db-version: ['10.9']
 
@@ -43,26 +41,26 @@ jobs:
           MYSQL_DATABASE: drupal
           MYSQL_USER: drupal
           MYSQL_PASSWORD: drupal
+        ports:
+          - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="mysqladmin ping -h localhost --silent"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: gd, pdo_mysql
+          extensions: gd, pdo_mysql, mbstring, xml, opcache, mysql, curl, zip, sockets
           tools: composer:v2
+          coverage: none
 
       - name: Get Composer cache directory
         id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(composer --global config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache Composer dependencies
         uses: actions/cache@v3
@@ -74,16 +72,18 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Create Drupal project
-        run: |
-          composer create-project drupal/recommended-project:^${{ matrix.drupal-core }} drupal --no-interaction
-          cd drupal
+        run: composer create-project drupal/recommended-project:^${{ matrix.drupal-core }} ${{ env.DRUPAL_ROOT }} --no-interaction
 
+      - name: Configure Drupal project
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
           # Configure platform PHP version
           composer config platform.php ${{ matrix.php-version }}
 
           # Add essential development dependencies for Drupal testing
           composer require --dev --no-interaction \
             drupal/core-dev \
+            drupal/coder \
             drush/drush \
             phpstan/phpstan \
             mglaman/phpstan-drupal \
@@ -91,39 +91,31 @@ jobs:
 
           composer dump-autoload
 
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+
       - name: Setup module
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
-          cd drupal
-          mkdir -p web/modules/contrib
-
-          # Copy module files excluding the drupal directory we just created
-          rsync -av --exclude='drupal' $GITHUB_WORKSPACE/ web/modules/contrib/proxy_block/
-
-          # Install module's dev dependencies (like drupal/coder)
-          cd web/modules/contrib/proxy_block
-          find . -type f
-          composer install --no-interaction --dev
+          composer config --no-plugins allow-plugins.phpstan/extension-installer true
+          composer --dev --no-interaction --no-progress install
 
       - name: Run PHPCS
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
-          cd drupal/web/modules/contrib/proxy_block
           composer run-script lint:check
 
-      - name: Install PHPStan
-        run: |
-          cd drupal/web/modules/contrib/proxy_block
-          composer config --no-plugins allow-plugins.phpstan/extension-installer true
-          composer install --dev
-          cd ../../../../../
-
       - name: Run PHPStan
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd drupal/
-          php web/modules/contrib/proxy_block/vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
+          php vendor/bin/phpstan.phar \
+            --configuration=${{ env.MODULE_PATH }}/phpstan.neon
 
       - name: Install Drupal
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd drupal
           php vendor/bin/drush site-install standard \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
             --account-name=admin \
@@ -131,30 +123,50 @@ jobs:
             --yes
 
       - name: Enable module
+        working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          cd drupal
           php vendor/bin/drush cache:rebuild
-          php vendor/bin/drush pm:enable proxy_block --yes
+          php vendor/bin/drush pm:enable ${{ env.MODULE_NAME }} --yes
 
       - name: Copy deprecation ignore file
-        run: |
-          cp drupal/web/core/.deprecation-ignore.txt drupal/.deprecation-ignore.txt
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: cp web/core/.deprecation-ignore.txt .
 
-      - name: Setup Chrome (for functional-javascript tests)
+      - name: Setup Chrome and ChromeDriver (for functional-javascript tests)
         uses: browser-actions/setup-chrome@latest
 
-      - name: Start web server for functional tests
+      - name: Start ChromeDriver
         run: |
-          cd drupal
+          # ChromeDriver is already installed with Chrome
+          chromedriver --port=9515 &
+          sleep 2
+
+          # Health check for ChromeDriver
+          retries=10
+          count=0
+          until curl -s http://127.0.0.1:9515/status > /dev/null; do
+            count=$((count+1))
+            if [ ${count} -gt ${retries} ]; then
+              echo "ChromeDriver failed to start after ${retries} retries."
+              exit 1
+            fi
+            echo "Waiting for ChromeDriver... (Attempt ${count})"
+            sleep 1
+          done
+          echo "ChromeDriver is ready!"
+
+      - name: Start web server for functional tests
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
           php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
           sleep 2
 
       - name: Run tests
-        run: |
-          cd drupal
-          vendor/bin/phpunit \
-            --configuration=web/core/phpunit.xml.dist \
-            web/modules/contrib/proxy_block/tests/
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: php vendor/bin/phpunit \
+          --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+          --debug \
+          ${{ env.MODULE_PATH }}/tests/
 
   code-quality:
     name: '🔍 Code Quality (ESLint, Stylelint, CSpell)'
