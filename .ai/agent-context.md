@@ -13,28 +13,43 @@ The module is part of the A/B Testing ecosystem and integrates with the [A/B Tes
 ### Drupal Commands
 
 ```bash
-# Navigate to Drupal root first
-cd /path/to/your/drupal/root
+# DDEV commands (when using DDEV local environment)
+ddev drush
 
+# Clear cache (frequently needed during development)
+ddev drush cache:rebuild
+ddev drush cr
+
+# Enable/disable the proxy_block module
+ddev drush pm:enable proxy_block
+ddev drush pm:uninstall proxy_block
+
+# Export/import configuration
+ddev drush config:export
+ddev drush config:import
+
+# Alternative: Standard commands (when not using DDEV)
 # Use drush from vendor/bin
 vendor/bin/drush
 
-# Clear cache (frequently needed during development)
+# Clear cache
 vendor/bin/drush cache:rebuild
 vendor/bin/drush cr
-
-# Enable/disable the proxy_block module
-vendor/bin/drush pm:enable proxy_block
-vendor/bin/drush pm:uninstall proxy_block
-
-# Export/import configuration
-vendor/bin/drush config:export
-vendor/bin/drush config:import
 ```
 
 ### Testing Commands
 
 ```bash
+# DDEV commands (when using DDEV local environment)
+ddev exec vendor/bin/phpunit
+
+# Run specific test groups
+ddev exec vendor/bin/phpunit --group proxy_block
+
+# Run tests for this module specifically
+ddev exec vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
+
+# Alternative: Standard commands (when not using DDEV)
 # Run all tests (from Drupal root)
 vendor/bin/phpunit
 
@@ -48,11 +63,13 @@ vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
 ### PHP Code Quality
 
 ```bash
-# Run PHP static analysis (if PHPStan is configured)
-vendor/bin/phpstan analyse web/modules/contrib/proxy_block/
+# DDEV commands (when using DDEV local environment)
+ddev composer run-script lint:check
+ddev composer run-script lint:fix
 
-# Run PHP Code Sniffer (if configured)
-vendor/bin/phpcs web/modules/contrib/proxy_block/
+# Alternative: Standard commands (when not using DDEV)
+composer run-script lint:check
+composer run-script lint:fix
 ```
 
 ## Code Architecture
@@ -78,16 +95,7 @@ The main block plugin implements a sophisticated proxy pattern with the followin
 
 #### Dependency Injection
 
-```php
-public function __construct(
-  array $configuration,
-  string $plugin_id,
-  mixed $plugin_definition,
-  BlockManagerInterface $block_manager,      // Creates target block instances
-  LoggerInterface $logger,                   // Logs errors and warnings
-  AccountProxyInterface $current_user,       // Access control
-)
-```
+See the constructor in `src/Plugin/Block/ProxyBlock.php` for the complete dependency injection setup, which includes BlockManagerInterface, LoggerInterface, and AccountProxyInterface services.
 
 ### Render Pipeline
 
@@ -105,13 +113,7 @@ public function __construct(
 
 #### 3. Render Phase
 
-```php
-// Core render flow
-$target_block = $this->getTargetBlock();           // Create/get cached instance
-$access_result = $target_block->access(...);       // Check access permissions
-$build = $target_block->build();                   // Generate render array
-$this->bubbleTargetBlockCacheMetadata($build);     // Merge cache metadata
-```
+The core render flow is implemented in the `build()` method in `src/Plugin/Block/ProxyBlock.php`. This method handles target block creation, access checking, render array generation, and cache metadata bubbling.
 
 ### Context Handling System
 
@@ -131,21 +133,7 @@ The module implements sophisticated context mapping for blocks that require cont
 
 ### Cache Integration
 
-Critical for performance - the module properly bubbles cache metadata:
-
-```php
-protected function bubbleTargetBlockCacheMetadata(array &$build, ...): void {
-  $cache_metadata = CacheableMetadata::createFromRenderArray($build);
-
-  // Merge target block cache metadata
-  $cache_metadata->addCacheContexts($target_block->getCacheContexts());
-  $cache_metadata->addCacheTags($target_block->getCacheTags());
-  $cache_metadata->setCacheMaxAge(Cache::mergeMaxAges(...));
-
-  // Apply to render array
-  $cache_metadata->applyTo($build);
-}
-```
+Critical for performance - the module properly bubbles cache metadata through the `bubbleTargetBlockCacheMetadata()` method in `src/Plugin/Block/ProxyBlock.php`. This method merges cache contexts, tags, and max-age from both the target block and proxy block to ensure proper caching behavior.
 
 ### Error Handling Strategy
 
@@ -159,41 +147,15 @@ Comprehensive error handling with graceful degradation:
 
 ### Functional Programming Over Loops
 
-```php
-// Preferred: functional approach
-$block_options = array_map(
-  static fn($definition) => $definition['admin_label'] ?? $definition['id'],
-  array_filter($block_definitions, fn($definition, $plugin_id) => $plugin_id !== $this->getPluginId())
-);
-
-// Avoid: traditional foreach loops for data transformation
-```
+The codebase uses functional programming patterns with `array_map`, `array_filter`, and `array_reduce` throughout. See examples in the `blockForm()` and `passContextsToTargetBlock()` methods in `src/Plugin/Block/ProxyBlock.php`.
 
 ### Polymorphism Over Conditionals
 
-```php
-// Uses interface detection instead of string comparisons
-if ($target_block instanceof ContextAwarePluginInterface) {
-  $this->passContextsToTargetBlock($target_block);
-}
-
-if ($target_block instanceof PluginFormInterface) {
-  $config_form = $target_block->buildConfigurationForm([], $form_state);
-}
-```
+Interface detection is used instead of string comparisons throughout the codebase. The proxy block checks for `ContextAwarePluginInterface` and `PluginFormInterface` implementations to determine target block capabilities.
 
 ### Early Returns (Guard Clauses)
 
-```php
-// Preferred pattern throughout codebase
-if (empty($plugin_id)) {
-  return NULL;
-}
-
-if (empty($context_definitions)) {
-  return [];
-}
-```
+Early returns are used consistently throughout the codebase to reduce nesting and improve readability. See examples in validation methods and helper functions in `src/Plugin/Block/ProxyBlock.php`.
 
 ## Module Integration
 
@@ -221,45 +183,88 @@ if (empty($context_definitions)) {
 web/modules/contrib/proxy_block/
 ├── proxy_block.info.yml          # Module definition
 ├── README.md                     # Comprehensive documentation
-└── src/Plugin/Block/
-    └── ProxyBlock.php            # Main plugin implementation (650+ lines)
+├── composer.json                 # PHP dependencies and scripts
+├── package.json                  # Node.js dependencies and scripts
+├── phpstan.neon                  # PHPStan static analysis config
+├── phpunit.xml.dist              # PHPUnit test configuration
+├── cspell.json                   # Spell checking configuration
+├── release.config.cjs            # Semantic release configuration
+├── src/Plugin/Block/
+│   └── ProxyBlock.php            # Main plugin implementation (661 lines)
+└── tests/
+    ├── dummy.css                 # Test CSS file for linting
+    ├── dummy.js                  # Test JavaScript file for linting
+    └── src/
+        ├── Unit/                 # Unit tests
+        ├── Kernel/               # Kernel tests
+        ├── Functional/           # Functional tests
+        └── FunctionalJavascript/ # JavaScript functional tests
 ```
 
 ## Development Workflow
 
 1. **Make changes** to `ProxyBlock.php`
-2. **Clear cache**: `vendor/bin/drush cr`
+2. **Clear cache**: `ddev drush cr` (or `vendor/bin/drush cr`)
 3. **Test changes** through Drupal's block placement UI
-4. **Run tests**: `vendor/bin/phpunit --group proxy_block`
-5. **Validate code**: Use available composer scripts
+4. **Run tests**: `ddev exec vendor/bin/phpunit --group proxy_block`
+5. **Validate code**: `ddev composer run-script lint:check` and `ddev exec npm run check`
 
 ### Code Quality Commands
 
-The module includes composer scripts for code quality checks:
+The module includes composer and npm scripts for comprehensive code quality checks:
 
+#### PHP Code Quality
 ```bash
-# Run PHP CodeSniffer (PHPCS) to check coding standards
-composer run-script lint:check
+# DDEV commands (when using DDEV local environment)
+ddev composer run-script lint:check
+ddev composer run-script lint:fix
 
-# Fix coding standards violations automatically
+# Alternative: Standard commands (when not using DDEV)
+composer run-script lint:check
 composer run-script lint:fix
 ```
 
-### Additional Testing Commands
+#### JavaScript/CSS/Spelling Code Quality
+```bash
+# DDEV commands (when using DDEV local environment)
+ddev exec npm run check                    # Run all checks (JS, CSS, spelling)
+ddev exec npm run js:check                # JavaScript linting and formatting
+ddev exec npm run js:fix                  # Fix JavaScript issues
+ddev exec npm run stylelint:check         # CSS linting
+ddev exec npm run cspell:check           # Spell checking
+ddev exec npm run format:check           # Prettier formatting check
+ddev exec npm run format:fix             # Fix formatting issues
+
+# Alternative: Standard commands (when not using DDEV)
+npm run check                    # Run all checks (JS, CSS, spelling)
+npm run js:check                # JavaScript linting and formatting
+npm run js:fix                  # Fix JavaScript issues
+npm run stylelint:check         # CSS linting
+npm run cspell:check           # Spell checking
+npm run format:check           # Prettier formatting check
+npm run format:fix             # Fix formatting issues
+```
+
+### Release Management
+
+The module includes semantic release configuration:
 
 ```bash
-# Run PHPStan static analysis (if configured in Drupal project)
-vendor/bin/phpstan analyse web/modules/contrib/proxy_block/
+# DDEV commands (when using DDEV local environment)
+ddev composer run-script release
 
-# Run ESLint for JavaScript files
-npx eslint **/*.js
-
-# Run Stylelint for CSS files
-npx stylelint **/*.css
-
-# Run CSpell for spell checking
-npx cspell "**/*.{php,md,yml,yaml,txt}"
+# Alternative: Standard commands (when not using DDEV)
+composer run-script release
 ```
+
+### Additional Development Tools
+
+- **PHPStan**: Static analysis configuration available in `phpstan.neon`
+- **PHPUnit**: Test configuration in `phpunit.xml.dist`  
+- **CSpell**: Spell checking configuration in `cspell.json`
+- **Semantic Release**: Automated releases via `release.config.cjs`
+- **ESLint/Prettier**: JavaScript code quality and formatting
+- **Stylelint**: CSS code quality
 
 ## Performance Considerations
 
