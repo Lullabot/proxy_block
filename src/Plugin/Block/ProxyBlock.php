@@ -16,12 +16,16 @@ use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\Context\ContextRepositoryInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Provides a Proxy Block.
@@ -49,6 +53,21 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   protected AccountProxyInterface $currentUser;
 
   /**
+   * The current route match.
+   */
+  protected RouteMatchInterface $routeMatch;
+
+  /**
+   * The request stack.
+   */
+  protected RequestStack $requestStack;
+
+  /**
+   * The context repository.
+   */
+  protected ContextRepositoryInterface $contextRepository;
+
+  /**
    * Cached target block instance.
    */
   protected ?BlockPluginInterface $targetBlockInstance = NULL;
@@ -68,6 +87,12 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    *   The logger service.
    * @param \Drupal\Core\Session\AccountProxyInterface $current_user
    *   The current user service.
+   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
+   *   The current route match.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
+   * @param \Drupal\Core\Plugin\Context\ContextRepositoryInterface $context_repository
+   *   The context repository.
    */
   public function __construct(
     array $configuration,
@@ -76,11 +101,17 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     BlockManagerInterface $block_manager,
     LoggerInterface $logger,
     AccountProxyInterface $current_user,
+    RouteMatchInterface $route_match,
+    RequestStack $request_stack,
+    ContextRepositoryInterface $context_repository,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->blockManager = $block_manager;
     $this->logger = $logger;
     $this->currentUser = $current_user;
+    $this->routeMatch = $route_match;
+    $this->requestStack = $request_stack;
+    $this->contextRepository = $context_repository;
   }
 
   /**
@@ -93,7 +124,10 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $plugin_definition,
       $container->get('plugin.manager.block'),
       $container->get('logger.factory')->get('ab_blocks'),
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('current_route_match'),
+      $container->get('request_stack'),
+      $container->get('context.repository')
     );
   }
 
@@ -236,7 +270,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       // Create the target block instance.
       $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
 
-      // Build the context mapping form if the block requires contexts.
+      // Build the context mapping form FIRST if the block requires contexts.
       if ($target_block instanceof ContextAwarePluginInterface) {
         $context_form = $this->buildContextMappingForm($target_block, $config);
         if (!empty($context_form)) {
@@ -244,12 +278,11 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         }
       }
 
-      // If the block implements PluginFormInterface, build its configuration
-      // form.
+      // If the block implements PluginFormInterface, build its configuration form.
       if ($target_block instanceof PluginFormInterface) {
         $config_form = $target_block->buildConfigurationForm([], $form_state);
 
-        $form_elements = [
+        $form_elements['block_config'] = [
           '#type' => 'details',
           '#title' => $this->t('Block Configuration'),
           '#open' => TRUE,
@@ -291,6 +324,191 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Discovers available contexts based on the current environment.
+   *
+   * @return array
+   *   Array of context objects keyed by context name.
+   */
+  private function discoverAvailableContexts(): array {
+    $contexts = [];
+    
+    // Always include proxy block contexts.
+    $proxy_contexts = $this->getContexts();
+    $contexts += $proxy_contexts;
+    
+    // Detect if we're in Layout Builder and add those contexts.
+    if ($this->isLayoutBuilderEnvironment()) {
+      $contexts += $this->getLayoutBuilderContexts();
+    }
+    
+    // Add route-based contexts.
+    $contexts += $this->getRouteContexts();
+    
+    // Add entity contexts from current route.
+    $contexts += $this->getEntityContextsFromRoute();
+    
+    // Add global contexts from context repository.
+    try {
+      $available_context_ids = $this->contextRepository->getAvailableContexts();
+      foreach ($available_context_ids as $context_id => $context_definition) {
+        if (!isset($contexts[$context_id])) {
+          $runtime_contexts = $this->contextRepository->getRuntimeContexts([$context_id]);
+          if (isset($runtime_contexts[$context_id])) {
+            $contexts[$context_id] = $runtime_contexts[$context_id];
+          }
+        }
+      }
+    }
+    catch (\Exception $e) {
+      $this->logger->warning('Failed to get contexts from context repository: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+    }
+    
+    return $contexts;
+  }
+
+  /**
+   * Determines if the proxy block is being configured in Layout Builder.
+   *
+   * @return bool
+   *   TRUE if in Layout Builder environment, FALSE otherwise.
+   */
+  private function isLayoutBuilderEnvironment(): bool {
+    $route_name = $this->routeMatch->getRouteName();
+    
+    // Check for Layout Builder routes.
+    $layout_builder_routes = [
+      'layout_builder.overrides.node.view',
+      'layout_builder.overrides.node.save',
+      'layout_builder.defaults.node.view',
+      'layout_builder.defaults.node.save',
+      'layout_builder.choose_block',
+      'layout_builder.add_block',
+      'layout_builder.update_block',
+    ];
+    
+    if (in_array($route_name, $layout_builder_routes, TRUE)) {
+      return TRUE;
+    }
+    
+    // Check request for Layout Builder indicators.
+    $request = $this->requestStack->getCurrentRequest();
+    if ($request) {
+      $request_uri = $request->getRequestUri();
+      if (strpos($request_uri, 'layout_builder') !== FALSE) {
+        return TRUE;
+      }
+    }
+    
+    return FALSE;
+  }
+
+  /**
+   * Gets Layout Builder specific contexts.
+   *
+   * @return array
+   *   Array of Layout Builder contexts.
+   */
+  private function getLayoutBuilderContexts(): array {
+    $contexts = [];
+    
+    try {
+      // Get Layout Builder entity context.
+      $entity_contexts = $this->contextRepository->getRuntimeContexts(['@layout_builder.entity']);
+      $contexts += $entity_contexts;
+      
+      // Get Layout Builder view mode context.
+      $view_mode_contexts = $this->contextRepository->getRuntimeContexts(['@layout_builder.view_mode']);
+      $contexts += $view_mode_contexts;
+    }
+    catch (\Exception $e) {
+      $this->logger->debug('Layout Builder contexts not available: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+    }
+    
+    return $contexts;
+  }
+
+  /**
+   * Gets route-based contexts.
+   *
+   * @return array
+   *   Array of route-based contexts.
+   */
+  private function getRouteContexts(): array {
+    $contexts = [];
+    
+    try {
+      // Get common route contexts.
+      $route_context_ids = [
+        '@node.node_route_context',
+        '@user.current_user_context',
+        '@user.user_route_context',
+        '@taxonomy_term.taxonomy_term_route_context',
+      ];
+      
+      foreach ($route_context_ids as $context_id) {
+        try {
+          $route_contexts = $this->contextRepository->getRuntimeContexts([$context_id]);
+          $contexts += $route_contexts;
+        }
+        catch (\Exception $e) {
+          // Context not available, continue with next one.
+          continue;
+        }
+      }
+    }
+    catch (\Exception $e) {
+      $this->logger->debug('Route contexts not fully available: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+    }
+    
+    return $contexts;
+  }
+
+  /**
+   * Gets entity contexts from current route parameters.
+   *
+   * @return array
+   *   Array of entity contexts from route.
+   */
+  private function getEntityContextsFromRoute(): array {
+    $contexts = [];
+    
+    // Get route parameters that might be entities.
+    $route_parameters = $this->routeMatch->getParameters()->all();
+    
+    foreach ($route_parameters as $parameter_name => $parameter_value) {
+      if (is_object($parameter_value) && method_exists($parameter_value, 'getEntityTypeId')) {
+        // This looks like an entity, create a context for it.
+        try {
+          $entity_type_id = $parameter_value->getEntityTypeId();
+          $context_id = $entity_type_id . '_from_route';
+          
+          // Create a context definition.
+          $context_definition = \Drupal::service('plugin.manager.typed_data')
+            ->createDataDefinition('entity:' . $entity_type_id);
+          
+          // Create the context.
+          $context = new \Drupal\Core\Plugin\Context\Context($context_definition, $parameter_value);
+          $contexts[$context_id] = $context;
+        }
+        catch (\Exception $e) {
+          $this->logger->debug('Failed to create entity context for @param: @message', [
+            '@param' => $parameter_name,
+            '@message' => $e->getMessage(),
+          ]);
+        }
+      }
+    }
+    
+    return $contexts;
+  }
+
+  /**
    * Builds the context mapping form for a context-aware target block.
    *
    * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
@@ -309,13 +527,20 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       return [];
     }
 
-    // Get available contexts from the proxy block for dropdown options.
-    $available_contexts = $this->getContexts();
-    $context_options = ['' => $this->t('- Select context -')] + array_map(
-        static fn($context) => $context->getContextDefinition()
-          ->getLabel() ?: $context->getContextDefinition()->getDataType(),
-        $available_contexts
-      );
+    // Use dynamic context discovery instead of static getContexts().
+    $available_contexts = $this->discoverAvailableContexts();
+    $context_options = ['' => $this->t('- Select context -')];
+    
+    foreach ($available_contexts as $context_name => $context) {
+      if ($context && $context->getContextDefinition()) {
+        $label = $context->getContextDefinition()->getLabel() ?: $context_name;
+        $data_type = $context->getContextDefinition()->getDataType();
+        $context_options[$context_name] = $this->t('@label (@type)', [
+          '@label' => $label,
+          '@type' => $data_type,
+        ]);
+      }
+    }
 
     $form = [
       '#type' => 'details',
@@ -371,7 +596,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         // Validate context mapping if the block requires contexts.
         if ($target_block instanceof ContextAwarePluginInterface) {
-          $context_mapping = $form_state->getValue('context_mapping') ?? [];
+          $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
           $context_definitions = $target_block->getContextDefinitions();
 
           $required_contexts = array_filter($context_definitions, static fn($definition) => $definition->isRequired());
@@ -384,7 +609,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
           array_walk(
             $missing_contexts,
             function ($definition, $context_name) use ($form_state) {
-              $form_state->setErrorByName("context_mapping][$context_name]", $this->t('Context mapping for @context is required.', [
+              $form_state->setErrorByName("target_block][config][context_mapping][$context_name]", $this->t('Context mapping for @context is required.', [
                 '@context' => $definition->getLabel() ?: $context_name,
               ]));
             }
@@ -427,7 +652,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         // Process context mapping for context-aware blocks.
         if ($target_block instanceof ContextAwarePluginInterface) {
-          $context_mapping = $form_state->getValue('context_mapping') ?? [];
+          $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
           $this->configuration['context_mapping'] = array_filter($context_mapping);
         }
         else {
@@ -541,16 +766,17 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   protected function passContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
     try {
-      $proxy_contexts = $this->getContexts();
+      // Use dynamic context discovery instead of just proxy contexts.
+      $available_contexts = $this->discoverAvailableContexts();
       $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
       $target_context_definitions = $target_block->getContextDefinitions();
 
       $mapped_contexts = array_filter(
         array_map(
-          function ($target_context_name) use ($context_mapping, $proxy_contexts) {
+          function ($target_context_name) use ($context_mapping, $available_contexts) {
             $source_context_name = $context_mapping[$target_context_name] ?? $target_context_name;
-            return isset($proxy_contexts[$source_context_name])
-              ? [$target_context_name, $proxy_contexts[$source_context_name]]
+            return isset($available_contexts[$source_context_name])
+              ? [$target_context_name, $available_contexts[$source_context_name]]
               : NULL;
           },
           array_keys($target_context_definitions)
