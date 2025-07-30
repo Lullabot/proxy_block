@@ -22,6 +22,7 @@ use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\Plugin\Context\ContextInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -491,6 +492,74 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Generates a user-friendly label for a context.
+   *
+   * @param string $context_name
+   *   The context name/ID.
+   * @param \Drupal\Core\Plugin\Context\ContextInterface $context
+   *   The context object.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup|string
+   *   A user-friendly label for the context.
+   */
+  private function generateContextLabel(string $context_name, ContextInterface $context) {
+    // Try to get the label from the context definition first.
+    $definition_label = $context->getContextDefinition()->getLabel();
+    if ($definition_label && !empty(trim((string) $definition_label))) {
+      return (string) $definition_label;
+    }
+    
+    // For route-based contexts like @node.node_route_context:node, create friendly names.
+    if (str_starts_with($context_name, '@')) {
+      // Pattern: @entity_type.entity_type_route_context:entity_type
+      if (preg_match('/^@(\w+)\.(\w+)_route_context:(\w+)$/', $context_name, $matches)) {
+        $entity_type = $matches[1];
+        return $this->t('Current @entity', ['@entity' => ucfirst($entity_type)]);
+      }
+      
+      // Pattern: @layout_builder.entity
+      if (preg_match('/^@layout_builder\.(\w+)$/', $context_name, $matches)) {
+        $entity_type = $matches[1];
+        return $this->t('Layout Builder @entity', ['@entity' => ucfirst($entity_type)]);
+      }
+      
+      // Generic @prefix handling - just remove @ and make title case.
+      $clean_name = ltrim($context_name, '@');
+      $clean_name = str_replace(['_', '.'], ' ', $clean_name);
+      return ucwords($clean_name);
+    }
+    
+    // For entity contexts created from route parameters (like node_node, term_taxonomy_term).
+    if (preg_match('/^(\w+)_(\w+)$/', $context_name, $matches)) {
+      $param_name = $matches[1];
+      $entity_type = $matches[2];
+      
+      // If parameter name matches entity type, just use the entity type.
+      if ($param_name === $entity_type) {
+        return $this->t('Current @entity', ['@entity' => ucfirst($entity_type)]);
+      }
+      
+      return $this->t('@param (@entity)', [
+        '@param' => ucfirst($param_name),
+        '@entity' => $entity_type,
+      ]);
+    }
+    
+    // For simple context names, make them title case.
+    if (in_array($context_name, ['current_user', 'user', 'node', 'term'])) {
+      return $this->t('Current @type', ['@type' => ucfirst($context_name)]);
+    }
+    
+    // For language contexts.
+    if (str_contains($context_name, 'language')) {
+      return ucwords(str_replace('_', ' ', $context_name));
+    }
+    
+    // Default: clean up underscores and make title case.
+    return ucwords(str_replace('_', ' ', $context_name));
+  }
+
+  /**
    * Builds the context mapping form for a context-aware target block.
    *
    * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
@@ -523,7 +592,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
           return $acc;
         }
         
-        $label = $context->getContextDefinition()->getLabel() ?: $context_name;
+        $label = $this->generateContextLabel($context_name, $context);
         $data_type = $context->getContextDefinition()->getDataType();
         $acc[$context_name] = $this->t('@label (@type)', [
           '@label' => $label,
