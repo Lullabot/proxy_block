@@ -22,6 +22,7 @@ use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
 use Drupal\Core\Plugin\Context\ContextInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
@@ -560,6 +561,80 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Gets filtered context options that are compatible with the target context.
+   *
+   * @param \Drupal\Core\Plugin\Context\ContextDefinitionInterface $target_definition
+   *   The target context definition to match against.
+   * @param array $available_contexts
+   *   All available contexts.
+   *
+   * @return array
+   *   Filtered context options with only compatible contexts.
+   */
+  private function getFilteredContextOptions(ContextDefinitionInterface $target_definition, array $available_contexts): array {
+    $options = ['' => $this->t('- Select context -')];
+    $target_data_type = $target_definition->getDataType();
+    
+    foreach ($available_contexts as $context_name => $context) {
+      // Guard clause: skip if no context or context definition.
+      if (!$context || !$context->getContextDefinition()) {
+        continue;
+      }
+      
+      $context_definition = $context->getContextDefinition();
+      $context_data_type = $context_definition->getDataType();
+      
+      // Check if the context is compatible with the target.
+      if ($this->areContextsCompatible($target_data_type, $context_data_type)) {
+        $label = $this->generateContextLabel($context_name, $context);
+        $options[$context_name] = $this->t('@label (@type)', [
+          '@label' => $label,
+          '@type' => $context_data_type,
+        ]);
+      }
+    }
+    
+    return $options;
+  }
+
+  /**
+   * Checks if two context data types are compatible.
+   *
+   * @param string $target_type
+   *   The target context data type.
+   * @param string $source_type
+   *   The source context data type.
+   *
+   * @return bool
+   *   TRUE if the contexts are compatible, FALSE otherwise.
+   */
+  private function areContextsCompatible(string $target_type, string $source_type): bool {
+    // Exact match is always compatible.
+    if ($target_type === $source_type) {
+      return TRUE;
+    }
+    
+    // Entity types are compatible if they match the entity type part.
+    if (str_starts_with($target_type, 'entity:') && str_starts_with($source_type, 'entity:')) {
+      $target_entity_type = substr($target_type, 7); // Remove 'entity:' prefix
+      $source_entity_type = substr($source_type, 7); // Remove 'entity:' prefix
+      return $target_entity_type === $source_entity_type;
+    }
+    
+    // Language contexts are compatible with each other.
+    if (str_contains($target_type, 'language') && str_contains($source_type, 'language')) {
+      return TRUE;
+    }
+    
+    // Allow any context to match 'any' data type.
+    if ($target_type === 'any' || $source_type === 'any') {
+      return TRUE;
+    }
+    
+    return FALSE;
+  }
+
+  /**
    * Builds the context mapping form for a context-aware target block.
    *
    * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
@@ -580,29 +655,6 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
     // Use dynamic context discovery instead of static getContexts().
     $available_contexts = $this->discoverAvailableContexts();
-    $context_options = ['' => $this->t('- Select context -')];
-    
-    $context_options += array_reduce(
-      array_keys($available_contexts),
-      function ($acc, $context_name) use ($available_contexts) {
-        $context = $available_contexts[$context_name];
-        
-        // Guard clause: skip if no context or context definition.
-        if (!$context || !$context->getContextDefinition()) {
-          return $acc;
-        }
-        
-        $label = $this->generateContextLabel($context_name, $context);
-        $data_type = $context->getContextDefinition()->getDataType();
-        $acc[$context_name] = $this->t('@label (@type)', [
-          '@label' => $label,
-          '@type' => $data_type,
-        ]);
-        
-        return $acc;
-      },
-      []
-    );
 
     $form = [
       '#type' => 'details',
@@ -614,12 +666,15 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $current_mapping = $config['context_mapping'] ?? [];
 
     $context_fields = array_map(
-      function ($definition, $context_name) use ($context_options, $current_mapping) {
+      function ($definition, $context_name) use ($available_contexts, $current_mapping) {
+        // Create filtered context options for this specific target context.
+        $filtered_context_options = $this->getFilteredContextOptions($definition, $available_contexts);
+        
         $field = [
           '#type' => 'select',
           '#title' => $definition->getLabel() ?: $context_name,
           '#description' => $definition->getDescription(),
-          '#options' => $context_options,
+          '#options' => $filtered_context_options,
           '#default_value' => $current_mapping[$context_name] ?? '',
         ];
 
