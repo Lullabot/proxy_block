@@ -13,7 +13,6 @@ use Drupal\Core\Plugin\ContextAwarePluginAssignmentTrait;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Psr\Log\LoggerInterface;
 
 /**
  * Handles the processing of the proxy block form.
@@ -24,39 +23,17 @@ final class TargetBlockFormProcessor {
   use StringTranslationTrait;
 
   /**
-   * The block manager service.
-   */
-  protected BlockManagerInterface $blockManager;
-
-  /**
-   * The logger service.
-   */
-  protected LoggerInterface $logger;
-
-  /**
-   * The target block context manager.
-   */
-  protected TargetBlockContextManager $contextManager;
-
-  /**
    * Constructs a new TargetBlockFormProcessor object.
    *
-   * @param \Drupal\Core\Block\BlockManagerInterface $block_manager
+   * @param \Drupal\Core\Block\BlockManagerInterface $blockManager
    *   The block manager service.
-   * @param \Psr\Log\LoggerInterface $logger
-   *   The logger service.
-   * @param \Drupal\proxy_block\Service\TargetBlockContextManager $context_manager
+   * @param \Drupal\proxy_block\Service\TargetBlockContextManager $contextManager
    *   The target block context manager.
    */
   public function __construct(
-    BlockManagerInterface $block_manager,
-    LoggerInterface $logger,
-    TargetBlockContextManager $context_manager,
-  ) {
-    $this->blockManager = $block_manager;
-    $this->logger = $logger;
-    $this->contextManager = $context_manager;
-  }
+    protected BlockManagerInterface $blockManager,
+    protected TargetBlockContextManager $contextManager,
+  ) {}
 
   /**
    * Builds the target block configuration form.
@@ -104,11 +81,6 @@ final class TargetBlockFormProcessor {
       return $form_elements;
     }
     catch (PluginException $e) {
-      $this->logger->warning('Failed to create target block @plugin for configuration form: @message', [
-        '@plugin' => $plugin_id,
-        '@message' => $e->getMessage(),
-      ]);
-
       return [
         'error' => [
           '#type' => 'details',
@@ -177,23 +149,12 @@ final class TargetBlockFormProcessor {
 
         if ($target_block instanceof ContextAwarePluginInterface) {
           $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
-          $this->logger->debug('ProxyBlock: Form submitted context mapping: @mapping', [
-            '@mapping' => json_encode($context_mapping),
-          ]);
           $target_block->setContextMapping($context_mapping);
-          $final_config = $target_block->getConfiguration();
-          $this->logger->debug('ProxyBlock: Target block final config after context mapping: @config', [
-            '@config' => json_encode($final_config),
-          ]);
         }
 
         $configuration['target_block']['config'] = $target_block->getConfiguration();
       }
       catch (PluginException $e) {
-        $this->logger->warning('Failed to process target block configuration for @plugin: @message', [
-          '@plugin' => $target_plugin_id,
-          '@message' => $e->getMessage(),
-        ]);
         $configuration['target_block']['config'] = [];
       }
     }

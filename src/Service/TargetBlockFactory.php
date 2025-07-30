@@ -8,27 +8,11 @@ use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
-use Psr\Log\LoggerInterface;
 
 /**
  * Factory service for creating and managing the target block instance.
  */
 final class TargetBlockFactory {
-
-  /**
-   * The block manager service.
-   */
-  protected BlockManagerInterface $blockManager;
-
-  /**
-   * The target block context manager.
-   */
-  protected TargetBlockContextManager $contextManager;
-
-  /**
-   * The logger service.
-   */
-  protected LoggerInterface $logger;
 
   /**
    * Cached target block instance.
@@ -38,21 +22,15 @@ final class TargetBlockFactory {
   /**
    * Constructs a new TargetBlockFactory object.
    *
-   * @param \Drupal\Core\Block\BlockManagerInterface $block_manager
-   *   The block manager service.
-   * @param \Drupal\proxy_block\Service\TargetBlockContextManager $context_manager
-   *   The target block context manager.
-   * @param \Psr\Log\LoggerInterface $logger
-   *   The logger service.
+   * @param \Drupal\Core\Block\BlockManagerInterface $blockManager
+   *   The block manager.
+   * @param \Drupal\proxy_block\Service\TargetBlockContextManager $contextManager
+   *   The context manager.
    */
   public function __construct(
-    BlockManagerInterface $block_manager,
-    TargetBlockContextManager $context_manager,
-    LoggerInterface $logger,
+    protected BlockManagerInterface $blockManager,
+    protected TargetBlockContextManager $contextManager,
   ) {
-    $this->blockManager = $block_manager;
-    $this->contextManager = $context_manager;
-    $this->logger = $logger;
   }
 
   /**
@@ -88,30 +66,16 @@ final class TargetBlockFactory {
       return NULL;
     }
 
-    $this->logger->debug('Creating target block @plugin with config: @config', [
-      '@plugin' => $plugin_id,
-      '@config' => json_encode($block_config),
-    ]);
-
     try {
       $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
 
       if ($target_block instanceof ContextAwarePluginInterface) {
-        $saved_context_mapping = $target_block->getContextMapping();
-        $this->logger->debug('Target block loaded with context mapping: @mapping', [
-          '@mapping' => json_encode($saved_context_mapping),
-        ]);
-
         $this->contextManager->applyContextsToTargetBlock($target_block);
       }
 
       return $target_block;
     }
     catch (PluginException $e) {
-      $this->logger->warning('Failed to create target block @plugin: @message', [
-        '@plugin' => $plugin_id,
-        '@message' => $e->getMessage(),
-      ]);
       return NULL;
     }
   }

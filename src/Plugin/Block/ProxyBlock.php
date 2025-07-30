@@ -113,9 +113,9 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $container->get('plugin.manager.block'),
       $container->get('current_user'),
       $container->get('request_stack'),
-      $container->get('proxy_block.service.target_block_factory'),
-      $container->get('proxy_block.service.form_processor'),
-      $container->get('proxy_block.service.cache_manager')
+      $container->get(TargetBlockFactory::class),
+      $container->get(TargetBlockFormProcessor::class),
+      $container->get(TargetBlockCacheManager::class)
     );
   }
 
