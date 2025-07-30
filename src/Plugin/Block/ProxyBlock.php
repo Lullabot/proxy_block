@@ -135,7 +135,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $plugin_id,
       $plugin_definition,
       $container->get('plugin.manager.block'),
-      $container->get('logger.factory')->get('ab_blocks'),
+      $container->get('logger.factory')->get('proxy_block'),
       $container->get('current_user'),
       $container->get('current_route_match'),
       $container->get('request_stack'),
@@ -404,6 +404,12 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
             'config',
             'context_mapping',
           ]) ?? [];
+          
+          // Debug what we're getting from the form.
+          $this->logger->debug('ProxyBlock blockSubmit context mapping: @mapping', [
+            '@mapping' => json_encode($context_mapping),
+          ]);
+          
           // Set context mapping directly on the target block.
           $target_block->setContextMapping($context_mapping);
           // Update the configuration with the target block's updated configuration.
@@ -518,15 +524,15 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       // Get all runtime contexts from the context repository - this is what Layout Builder does.
       $available_context_ids = $this->contextRepository->getAvailableContexts();
       $available_contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
-      
+
       // Use Drupal's context handler to properly apply contexts to the target block.
       $context_mapping = $target_block->getContextMapping();
-      
+
       $this->logger->debug('ProxyBlock applying contexts: available @available, mapping @mapping', [
         '@available' => implode(', ', array_keys($available_contexts)),
         '@mapping' => json_encode($context_mapping),
       ]);
-      
+
       if (!empty($available_contexts)) {
         $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
       }
