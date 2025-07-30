@@ -491,6 +491,11 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     try {
       $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
 
+      // Pass contexts to the target block if it's context-aware.
+      if ($target_block instanceof ContextAwarePluginInterface) {
+        $this->applyContextsToTargetBlock($target_block);
+      }
+
       return $target_block;
     }
     catch (PluginException $e) {
@@ -502,6 +507,27 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     }
   }
 
+  /**
+   * Applies available contexts to the target block using Drupal's context handler.
+   *
+   * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
+   *   The target block plugin.
+   */
+  protected function applyContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
+    try {
+      // Get available contexts - these will be populated by the proxy block's context.
+      $available_contexts = $this->getContexts();
+      
+      // Use Drupal's context handler to apply contexts with the stored mapping.
+      $context_mapping = $target_block->getContextMapping();
+      $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
+    }
+    catch (\Exception $e) {
+      $this->logger->warning('Failed to apply contexts to target block: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+    }
+  }
 
   /**
    * Bubbles cache metadata from the target block to the render array.
