@@ -31,7 +31,7 @@ class TrivialFunctionalJavascriptTrivialTest extends WebDriverTestBase {
    *
    * @coversNothing
    */
-  public function testSomething() {
+  public function testSomething(): void {
     $this->assertTrue(TRUE);
   }
 

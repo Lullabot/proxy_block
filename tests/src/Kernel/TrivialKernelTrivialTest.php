@@ -24,9 +24,9 @@ class TrivialKernelTrivialTest extends KernelTestBase {
   /**
    * Tests a trivial condition.
    *
-   * @coversNothing
+   * @coversNothing`
    */
-  public function testSomething() {
+  public function testSomething(): void {
     $this->assertTrue(TRUE);
   }
 

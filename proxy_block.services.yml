@@ -1,0 +1,8 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+  Drupal\proxy_block\Service\TargetBlockContextManager: {}
+  Drupal\proxy_block\Service\TargetBlockFactory: {}
+  Drupal\proxy_block\Service\TargetBlockFormProcessor: {}
+  Drupal\proxy_block\Service\TargetBlockCacheManager: {}

@@ -16,7 +16,7 @@ class TrivialUnitTrivialTest extends UnitTestCase {
    *
    * @coversNothing
    */
-  public function testSomething() {
+  public function testSomething(): void {
     $this->assertTrue(TRUE);
   }
 
