@@ -399,6 +399,12 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         // Process context mapping for context-aware blocks.
         if ($target_block instanceof ContextAwarePluginInterface) {
+          // Debug the entire form state to understand the structure.
+          $all_values = $form_state->getValues();
+          $this->logger->debug('ProxyBlock blockSubmit all values: @values', [
+            '@values' => json_encode($all_values, JSON_PRETTY_PRINT),
+          ]);
+          
           $context_mapping = $form_state->getValue([
             'target_block',
             'config',
@@ -533,6 +539,17 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         '@mapping' => json_encode($context_mapping),
       ]);
 
+      // If no context mapping is configured but the target block needs contexts,
+      // try to automatically map compatible contexts.
+      if (empty($context_mapping)) {
+        $context_mapping = $this->generateAutomaticContextMapping($target_block, $available_contexts);
+        if (!empty($context_mapping)) {
+          $this->logger->debug('ProxyBlock using automatic context mapping: @mapping', [
+            '@mapping' => json_encode($context_mapping),
+          ]);
+        }
+      }
+
       if (!empty($available_contexts)) {
         $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
       }
@@ -542,6 +559,34 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         '@message' => $e->getMessage(),
       ]);
     }
+  }
+
+  /**
+   * Generates automatic context mapping for target blocks with missing mappings.
+   *
+   * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
+   *   The target block plugin.
+   * @param array $available_contexts
+   *   Available contexts.
+   *
+   * @return array
+   *   Context mapping array.
+   */
+  protected function generateAutomaticContextMapping(ContextAwarePluginInterface $target_block, array $available_contexts): array {
+    $context_mapping = [];
+    $target_context_definitions = $target_block->getContextDefinitions();
+
+    foreach ($target_context_definitions as $context_name => $context_definition) {
+      // Find a compatible available context using the context handler.
+      $matching_contexts = $this->contextHandler()->getMatchingContexts($available_contexts, $context_definition);
+      
+      if (!empty($matching_contexts)) {
+        // Use the first matching context.
+        $context_mapping[$context_name] = array_keys($matching_contexts)[0];
+      }
+    }
+
+    return $context_mapping;
   }
 
   /**
