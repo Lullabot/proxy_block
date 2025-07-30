@@ -515,12 +515,21 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   protected function applyContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
     try {
-      // Get available contexts - these will be populated by the proxy block's context.
-      $available_contexts = $this->getContexts();
+      // Get all runtime contexts from the context repository - this is what Layout Builder does.
+      $available_context_ids = $this->contextRepository->getAvailableContexts();
+      $available_contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
       
-      // Use Drupal's context handler to apply contexts with the stored mapping.
+      // Use Drupal's context handler to properly apply contexts to the target block.
       $context_mapping = $target_block->getContextMapping();
-      $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
+      
+      $this->logger->debug('ProxyBlock applying contexts: available @available, mapping @mapping', [
+        '@available' => implode(', ', array_keys($available_contexts)),
+        '@mapping' => json_encode($context_mapping),
+      ]);
+      
+      if (!empty($available_contexts)) {
+        $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
+      }
     }
     catch (\Exception $e) {
       $this->logger->warning('Failed to apply contexts to target block: @message', [
