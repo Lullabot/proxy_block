@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\proxy_block\Service;
 
+use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Utility\NestedArray;
@@ -62,7 +63,7 @@ final class TargetBlockFormProcessor {
           '#open' => TRUE,
         ] + $config_form;
       }
-      elseif (empty($form_elements)) {
+      else {
         $form_elements['no_config'] = [
           '#type' => 'details',
           '#title' => $this->t('Block Configuration'),
@@ -139,7 +140,7 @@ final class TargetBlockFormProcessor {
       try {
         $target_block = $this->blockManager->createInstance($target_plugin_id, $block_config);
 
-        if ($target_block instanceof PluginFormInterface) {
+        if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
           $target_block->setConfiguration($block_config + $target_block->getConfiguration());
           $configuration['target_block']['config'] = $target_block->getConfiguration();
         }

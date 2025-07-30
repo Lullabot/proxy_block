@@ -31,7 +31,7 @@ class TrivialFunctionalTrivialTest extends BrowserTestBase {
    *
    * @coversNothing
    */
-  public function testSomething() {
+  public function testSomething(): void {
     $this->assertTrue(TRUE);
   }
 
