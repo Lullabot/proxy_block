@@ -138,7 +138,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $container->get('current_route_match'),
       $container->get('request_stack'),
       $container->get('context.repository'),
-      $container->get('plugin.manager.typed_data')
+      $container->get('typed_data_manager')
     );
   }
 
