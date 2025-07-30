@@ -16,6 +16,8 @@ use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\Context\ContextRepositoryInterface;
 use Drupal\Core\Plugin\ContextAwarePluginAssignmentTrait;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
@@ -310,7 +312,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
       // Build the context mapping form if the block requires contexts.
       if ($target_block instanceof ContextAwarePluginInterface) {
-        $gathered_contexts = $form_state->getTemporaryValue('gathered_contexts') ?: [];
+        $gathered_contexts = $this->getGatheredContexts();
         $form_elements['context_mapping'] = $this->addContextAssignmentElement($target_block, $gathered_contexts);
       }
 
@@ -399,28 +401,28 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         // Process context mapping for context-aware blocks.
         if ($target_block instanceof ContextAwarePluginInterface) {
-          // Debug the entire form state to understand the structure.
-          $all_values = $form_state->getValues();
-          $this->logger->debug('ProxyBlock blockSubmit all values: @values', [
-            '@values' => json_encode($all_values, JSON_PRETTY_PRINT),
-          ]);
-          
           $context_mapping = $form_state->getValue([
             'target_block',
             'config',
             'context_mapping',
           ]) ?? [];
-          
-          // Debug what we're getting from the form.
-          $this->logger->debug('ProxyBlock blockSubmit context mapping: @mapping', [
+
+          $this->logger->debug('ProxyBlock: Form submitted context mapping: @mapping', [
             '@mapping' => json_encode($context_mapping),
           ]);
-          
-          // Set context mapping directly on the target block.
+
+          // Set context mapping on the target block.
           $target_block->setContextMapping($context_mapping);
-          // Update the configuration with the target block's updated configuration.
-          $this->configuration['target_block']['config'] = $target_block->getConfiguration();
+
+          // Debug what the target block's configuration looks like after setting context mapping.
+          $final_config = $target_block->getConfiguration();
+          $this->logger->debug('ProxyBlock: Target block final config after context mapping: @config', [
+            '@config' => json_encode($final_config),
+          ]);
         }
+
+        // Update the configuration with the target block's configuration.
+        $this->configuration['target_block']['config'] = $target_block->getConfiguration();
       }
       catch (PluginException $e) {
         $this->logger->warning('Failed to process target block configuration for @plugin: @message', [
@@ -443,6 +445,39 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $target_block = $this->getTargetBlock();
     if (!$target_block) {
       return [];
+    }
+
+    // Check if we're in Layout Builder admin mode where contexts might not have values.
+    $request = $this->requestStack->getCurrentRequest();
+    $is_layout_builder_admin = $request && (
+      // Regular Layout Builder admin URLs
+      (str_contains($request->getPathInfo(), '/admin/structure/types/') && str_contains($request->getPathInfo(), '/display/') && str_contains($request->getPathInfo(), '/layout'))
+      // Layout Builder AJAX URLs
+      || str_contains($request->getPathInfo(), '/layout_builder/update/block/')
+      || str_contains($request->getPathInfo(), '/layout_builder/add/block/')
+      // Check destination parameter for Layout Builder pages
+      || ($request->query->get('destination') && str_contains($request->query->get('destination'), '/layout'))
+    );
+
+    if ($is_layout_builder_admin) {
+      // In Layout Builder admin interface, skip access check since contexts may not have values
+      // and just return a placeholder that shows the block is configured.
+      $config = $this->getConfiguration();
+      $target_plugin_id = $config['target_block']['id'] ?? '';
+      
+      if ($target_plugin_id) {
+        $block_definition = $this->blockManager->getDefinition($target_plugin_id);
+        $block_label = $block_definition['admin_label'] ?? $target_plugin_id;
+        
+        return [
+          '#markup' => '<div class="layout-builder-block"><strong>Proxy Block:</strong> ' . $this->t('Configured to render "@block"', ['@block' => $block_label]) . '</div>',
+          '#cache' => [
+            'contexts' => $this->getCacheContexts(),
+            'tags' => $this->getCacheTags(),
+            'max-age' => $this->getCacheMaxAge(),
+          ],
+        ];
+      }
     }
 
     // Verify the user has access to the target block.
@@ -500,11 +535,21 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       return NULL;
     }
 
+    $this->logger->debug('ProxyBlock: Creating target block @plugin with config: @config', [
+      '@plugin' => $plugin_id,
+      '@config' => json_encode($block_config),
+    ]);
+
     try {
       $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
 
-      // Pass contexts to the target block if it's context-aware.
+      // Debug the target block's initial context mapping from saved config.
       if ($target_block instanceof ContextAwarePluginInterface) {
+        $saved_context_mapping = $target_block->getContextMapping();
+        $this->logger->debug('ProxyBlock: Target block loaded with context mapping: @mapping', [
+          '@mapping' => json_encode($saved_context_mapping),
+        ]);
+
         $this->applyContextsToTargetBlock($target_block);
       }
 
@@ -520,58 +565,165 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
-   * Applies available contexts to the target block using Drupal's context handler.
+   * Gets all gathered contexts like Layout Builder does.
+   *
+   * @return \Drupal\Component\Plugin\Context\ContextInterface[]
+   *   Array of available contexts.
+   */
+  protected function getGatheredContexts(): array {
+    // Get all globally available contexts.
+    $available_context_ids = $this->contextRepository->getAvailableContexts();
+    $contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
+
+    $this->logger->debug('ProxyBlock: Raw available context IDs: @ids', [
+      '@ids' => implode(', ', array_keys($available_context_ids)),
+    ]);
+
+    $this->logger->debug('ProxyBlock: Runtime contexts keys: @keys', [
+      '@keys' => implode(', ', array_keys($contexts)),
+    ]);
+
+    // Don't filter contexts by hasContextValue() like Layout Builder does in forms,
+    // because in rendering context we need all available contexts even if they
+    // don't have values yet - the context system will populate them.
+    $populated_contexts = $contexts;
+
+    $this->logger->debug('ProxyBlock: Populated contexts keys: @keys', [
+      '@keys' => implode(', ', array_keys($populated_contexts)),
+    ]);
+
+    // For FieldBlocks that need view_mode, create a default one if it doesn't exist.
+    if (!isset($populated_contexts['view_mode'])) {
+      $populated_contexts['view_mode'] = $this->createDefaultViewModeContext();
+    }
+
+    return $populated_contexts;
+  }
+
+  /**
+   * Creates a default view_mode context for FieldBlocks.
+   *
+   * @return \Drupal\Core\Plugin\Context\Context
+   *   A view_mode context with 'default' value.
+   */
+  protected function createDefaultViewModeContext() {
+    $context_definition = new ContextDefinition('string', $this->t('View mode'));
+    $context = new Context($context_definition, 'default');
+    return $context;
+  }
+
+  /**
+   * Applies available contexts to the target block using gathered contexts.
    *
    * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
    *   The target block plugin.
    */
   protected function applyContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
     try {
-      // Get all runtime contexts from the context repository - this is what Layout Builder does.
-      $available_context_ids = $this->contextRepository->getAvailableContexts();
-      $available_contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
-
-      // Use Drupal's context handler to properly apply contexts to the target block.
+      $gathered_contexts = $this->getGatheredContexts();
       $context_mapping = $target_block->getContextMapping();
 
-      $this->logger->debug('ProxyBlock applying contexts: available @available, mapping @mapping', [
-        '@available' => implode(', ', array_keys($available_contexts)),
+      $this->logger->debug('ProxyBlock: Applying contexts. Target block: @plugin', [
+        '@plugin' => $target_block->getPluginId(),
+      ]);
+
+      $this->logger->debug('ProxyBlock: Available contexts: @contexts', [
+        '@contexts' => implode(', ', array_keys($gathered_contexts)),
+      ]);
+
+      $this->logger->debug('ProxyBlock: Current context mapping: @mapping', [
         '@mapping' => json_encode($context_mapping),
       ]);
 
-      // If no context mapping is configured but the target block needs contexts,
+      // If no context mapping is configured, or if there are missing required contexts,
       // try to automatically map compatible contexts.
-      if (empty($context_mapping)) {
-        $context_mapping = $this->generateAutomaticContextMapping($target_block, $available_contexts);
-        if (!empty($context_mapping)) {
-          $this->logger->debug('ProxyBlock using automatic context mapping: @mapping', [
-            '@mapping' => json_encode($context_mapping),
+      $target_context_definitions = $target_block->getContextDefinitions();
+      $missing_required_contexts = [];
+
+      foreach ($target_context_definitions as $context_name => $context_definition) {
+        if ($context_definition->isRequired() && !isset($context_mapping[$context_name])) {
+          $missing_required_contexts[] = $context_name;
+        }
+      }
+
+      if (empty($context_mapping) || !empty($missing_required_contexts)) {
+        $this->logger->debug('ProxyBlock: Missing required contexts: @missing', [
+          '@missing' => implode(', ', $missing_required_contexts),
+        ]);
+
+        $automatic_mapping = $this->generateAutomaticContextMapping($target_block, $gathered_contexts);
+        if (!empty($automatic_mapping)) {
+          // Merge automatic mapping with existing mapping, with automatic taking precedence for missing contexts
+          $merged_mapping = $context_mapping + $automatic_mapping;
+          $target_block->setContextMapping($merged_mapping);
+          $context_mapping = $merged_mapping;
+
+          $this->logger->debug('ProxyBlock: Set merged context mapping: @mapping', [
+            '@mapping' => json_encode($merged_mapping),
           ]);
         }
       }
 
-      if (!empty($available_contexts) && !empty($context_mapping)) {
-        // Debug the contexts we're trying to apply.
-        foreach ($context_mapping as $target_context => $source_context) {
-          if (isset($available_contexts[$source_context])) {
-            $this->logger->debug('ProxyBlock mapping @target to @source (available)', [
-              '@target' => $target_context,
-              '@source' => $source_context,
-            ]);
+      // Apply contexts using Drupal's context handler.
+      if (!empty($gathered_contexts) && !empty($context_mapping)) {
+        // Context mapping often uses '@' prefixed IDs, but the context array keys don't have the '@'.
+        // We need to resolve these properly.
+        $resolved_mapping = [];
+        foreach ($context_mapping as $target_context => $source_context_id) {
+          // Remove '@' prefix if present to match context array keys.
+          $clean_context_id = ltrim($source_context_id, '@');
+          
+          $this->logger->debug('ProxyBlock: Resolving @target -> @source (clean: @clean)', [
+            '@target' => $target_context,
+            '@source' => $source_context_id,
+            '@clean' => $clean_context_id,
+          ]);
+          
+          if (isset($gathered_contexts[$clean_context_id])) {
+            $resolved_mapping[$target_context] = $clean_context_id;
+            $this->logger->debug('ProxyBlock: Resolved using clean ID');
+          } elseif (isset($gathered_contexts[$source_context_id])) {
+            $resolved_mapping[$target_context] = $source_context_id;
+            $this->logger->debug('ProxyBlock: Resolved using original ID');
           } else {
-            $this->logger->warning('ProxyBlock mapping @target to @source (MISSING)', [
-              '@target' => $target_context,
-              '@source' => $source_context,
+            $this->logger->warning('ProxyBlock: Cannot resolve context @context (available: @available)', [
+              '@context' => $source_context_id,
+              '@available' => implode(', ', array_keys($gathered_contexts)),
             ]);
           }
         }
-        
-        $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
-        
-        // Verify contexts were applied.
-        $applied_contexts = $target_block->getContexts();
-        $this->logger->debug('ProxyBlock applied contexts result: @contexts', [
-          '@contexts' => implode(', ', array_keys($applied_contexts)),
+
+        $this->logger->debug('ProxyBlock: Resolved context mapping: @mapping', [
+          '@mapping' => json_encode($resolved_mapping),
+        ]);
+
+        if (!empty($resolved_mapping)) {
+          // Debug what we're actually passing to applyContextMapping
+          $this->logger->debug('ProxyBlock: About to apply contexts - gathered_contexts keys: @keys, resolved_mapping: @mapping', [
+            '@keys' => implode(', ', array_keys($gathered_contexts)),
+            '@mapping' => json_encode($resolved_mapping),
+          ]);
+          
+          try {
+            $this->contextHandler()->applyContextMapping($target_block, $gathered_contexts, $resolved_mapping);
+            $this->logger->debug('ProxyBlock: Applied context mapping successfully');
+          } catch (\Exception $e) {
+            $this->logger->error('ProxyBlock: Context application failed: @message', [
+              '@message' => $e->getMessage(),
+            ]);
+            // Don't rethrow, let it continue and see what happens
+          }
+
+          // Verify contexts were applied.
+          $applied_contexts = $target_block->getContexts();
+          $this->logger->debug('ProxyBlock: Target block now has contexts: @contexts', [
+            '@contexts' => implode(', ', array_keys($applied_contexts)),
+          ]);
+        }
+      } else {
+        $this->logger->warning('ProxyBlock: No contexts or mapping available. Contexts: @context_count, Mapping: @mapping_count', [
+          '@context_count' => count($gathered_contexts),
+          '@mapping_count' => count($context_mapping),
         ]);
       }
     }
@@ -600,28 +752,10 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     foreach ($target_context_definitions as $context_name => $context_definition) {
       // Find a compatible available context using the context handler.
       $matching_contexts = $this->contextHandler()->getMatchingContexts($available_contexts, $context_definition);
-      
+
       if (!empty($matching_contexts)) {
         // Use the first matching context.
         $context_mapping[$context_name] = array_keys($matching_contexts)[0];
-        
-        $this->logger->debug('ProxyBlock automatic mapping: @target_name (@target_type) -> @source_context', [
-          '@target_name' => $context_name,
-          '@target_type' => $context_definition->getDataType(),
-          '@source_context' => array_keys($matching_contexts)[0],
-        ]);
-      } else {
-        $this->logger->debug('ProxyBlock automatic mapping: @target_name (@target_type) -> NO MATCH FOUND', [
-          '@target_name' => $context_name,
-          '@target_type' => $context_definition->getDataType(),
-        ]);
-        
-        // For view_mode context, create a default string context if none exists.
-        if ($context_name === 'view_mode' && $context_definition->getDataType() === 'string') {
-          // FieldBlocks often need a view_mode context, create a default one.
-          $this->logger->debug('ProxyBlock creating default view_mode context');
-          // We can't create contexts here, but we'll note it for debugging.
-        }
       }
     }
 
