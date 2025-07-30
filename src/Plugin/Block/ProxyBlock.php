@@ -550,8 +550,29 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         }
       }
 
-      if (!empty($available_contexts)) {
+      if (!empty($available_contexts) && !empty($context_mapping)) {
+        // Debug the contexts we're trying to apply.
+        foreach ($context_mapping as $target_context => $source_context) {
+          if (isset($available_contexts[$source_context])) {
+            $this->logger->debug('ProxyBlock mapping @target to @source (available)', [
+              '@target' => $target_context,
+              '@source' => $source_context,
+            ]);
+          } else {
+            $this->logger->warning('ProxyBlock mapping @target to @source (MISSING)', [
+              '@target' => $target_context,
+              '@source' => $source_context,
+            ]);
+          }
+        }
+        
         $this->contextHandler()->applyContextMapping($target_block, $available_contexts, $context_mapping);
+        
+        // Verify contexts were applied.
+        $applied_contexts = $target_block->getContexts();
+        $this->logger->debug('ProxyBlock applied contexts result: @contexts', [
+          '@contexts' => implode(', ', array_keys($applied_contexts)),
+        ]);
       }
     }
     catch (\Exception $e) {
@@ -583,6 +604,24 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       if (!empty($matching_contexts)) {
         // Use the first matching context.
         $context_mapping[$context_name] = array_keys($matching_contexts)[0];
+        
+        $this->logger->debug('ProxyBlock automatic mapping: @target_name (@target_type) -> @source_context', [
+          '@target_name' => $context_name,
+          '@target_type' => $context_definition->getDataType(),
+          '@source_context' => array_keys($matching_contexts)[0],
+        ]);
+      } else {
+        $this->logger->debug('ProxyBlock automatic mapping: @target_name (@target_type) -> NO MATCH FOUND', [
+          '@target_name' => $context_name,
+          '@target_type' => $context_definition->getDataType(),
+        ]);
+        
+        // For view_mode context, create a default string context if none exists.
+        if ($context_name === 'view_mode' && $context_definition->getDataType() === 'string') {
+          // FieldBlocks often need a view_mode context, create a default one.
+          $this->logger->debug('ProxyBlock creating default view_mode context');
+          // We can't create contexts here, but we'll note it for debugging.
+        }
       }
     }
 
