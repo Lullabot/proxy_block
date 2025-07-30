@@ -1,0 +1,23 @@
+services:
+  proxy_block.service.context_manager:
+    class: Drupal\proxy_block\Service\TargetBlockContextManager
+    arguments:
+      - '@context.repository'
+      - '@context.handler'
+      - '@logger.factory'
+      - '@string_translation'
+  proxy_block.service.target_block_factory:
+    class: Drupal\proxy_block\Service\TargetBlockFactory
+    arguments:
+      - '@plugin.manager.block'
+      - '@proxy_block.service.context_manager'
+      - '@logger.factory'
+  proxy_block.service.form_processor:
+    class: Drupal\proxy_block\Service\TargetBlockFormProcessor
+    arguments:
+      - '@plugin.manager.block'
+      - '@logger.factory'
+      - '@string_translation'
+      - '@proxy_block.service.context_manager'
+  proxy_block.service.cache_manager:
+    class: Drupal\proxy_block\Service\TargetBlockCacheManager
