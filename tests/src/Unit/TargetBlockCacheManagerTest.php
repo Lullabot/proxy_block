@@ -6,11 +6,8 @@ namespace Drupal\Tests\proxy_block\Unit;
 
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\Cache;
-use Drupal\Core\Cache\CacheableDependencyInterface;
-use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\proxy_block\Service\TargetBlockCacheManager;
 use Drupal\Tests\UnitTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests the TargetBlockCacheManager service.
@@ -33,6 +30,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
     parent::setUp();
     $this->cacheManager = new TargetBlockCacheManager();
   }
+
   /**
    * Tests getCacheContexts with null target block.
    *
@@ -119,7 +117,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   }
 
   /**
-   * Tests getCacheMaxAge with valid target block.
+   * Tests getCacheMaxAge with the valid target block.
    *
    * @covers ::getCacheMaxAge
    */
@@ -137,7 +135,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   }
 
   /**
-   * Tests getCacheMaxAge with null target block.
+   * Tests getCacheMaxAge with the null target block.
    *
    * @covers ::getCacheMaxAge
    */
@@ -150,7 +148,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   }
 
   /**
-   * Tests getCacheMaxAge with permanent cache.
+   * Tests getCacheMaxAge with the permanent cache.
    *
    * @covers ::getCacheMaxAge
    */
@@ -216,7 +214,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
-    // Should return 0 (no cache) when target block has no cache.
+    // Should return 0 (no cache) when the target block has no cache.
     $this->assertEquals(0, $result);
   }
 
