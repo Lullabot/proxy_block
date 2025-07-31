@@ -12,7 +12,7 @@ use Drupal\Core\Plugin\ContextAwarePluginInterface;
 /**
  * Factory service for creating and managing the target block instance.
  */
-final class TargetBlockFactory {
+class TargetBlockFactory {
 
   /**
    * Cached target block instance.

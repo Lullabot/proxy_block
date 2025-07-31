@@ -12,7 +12,7 @@ use Drupal\Core\Cache\CacheableMetadata;
 /**
  * Manages cache metadata for the proxy block and its target block.
  */
-final class TargetBlockCacheManager {
+class TargetBlockCacheManager {
 
   /**
    * Bubbles cache metadata from the target block to the render array.

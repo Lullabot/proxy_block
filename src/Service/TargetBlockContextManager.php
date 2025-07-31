@@ -14,7 +14,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 /**
  * Manages context for the target block.
  */
-final class TargetBlockContextManager {
+class TargetBlockContextManager {
 
   use StringTranslationTrait;
 

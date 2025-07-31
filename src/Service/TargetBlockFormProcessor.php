@@ -18,7 +18,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 /**
  * Handles the processing of the proxy block form.
  */
-final class TargetBlockFormProcessor {
+class TargetBlockFormProcessor {
 
   use ContextAwarePluginAssignmentTrait;
   use StringTranslationTrait;

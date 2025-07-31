@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace Drupal\Tests\proxy_block\Unit;
 
 use Drupal\Component\Plugin\Exception\PluginException;
-use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
-use Drupal\Core\Plugin\ContextAwarePluginInterface;
-use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFormProcessor;
@@ -23,6 +20,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  * Tests the TargetBlockFormProcessor service.
  *
  * @group proxy_block
+ *
  * @coversDefaultClass \Drupal\proxy_block\Service\TargetBlockFormProcessor
  */
 class TargetBlockFormProcessorTest extends UnitTestCase {
@@ -72,7 +70,9 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   }
 
   /**
-   * Tests buildTargetBlockConfigurationForm with a simple block (no config, no context).
+   * Tests buildTargetBlockConfigurationForm with a simple block.
+   *
+   * The block has no context and no config.
    *
    * @covers ::buildTargetBlockConfigurationForm
    */
@@ -80,7 +80,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $plugin_id = 'test_block';
     $configuration = [];
 
-    // Mock a simple block plugin (not PluginFormInterface, not ContextAwarePluginInterface)
+    // Mock a simple block plugin (not PluginFormInterface, not
+    // ContextAwarePluginInterface)
     $target_block = $this->createMock(BlockPluginInterface::class);
 
     $this->blockManager
@@ -113,9 +114,11 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
       ],
     ];
 
-    // Mock a configurable block plugin
-    $target_block = $this->createMock([BlockPluginInterface::class, PluginFormInterface::class]);
-    
+    // Mock a configurable block plugin.
+    $target_block = $this->getMockBuilder(BlockPluginInterface::class)
+      ->onlyMethods(['getPluginId', 'buildConfigurationForm'])
+      ->getMock();
+
     $config_form = [
       'setting1' => [
         '#type' => 'textfield',
@@ -147,8 +150,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $this->assertEquals('details', $result['block_config']['#type']);
     $this->assertInstanceOf(TranslatableMarkup::class, $result['block_config']['#title']);
     $this->assertTrue($result['block_config']['#open']);
-    
-    // Check that the config form elements are merged
+
+    // Check that the config form elements are merged.
     $this->assertArrayHasKey('setting1', $result['block_config']);
     $this->assertArrayHasKey('setting2', $result['block_config']);
     $this->assertEquals('textfield', $result['block_config']['setting1']['#type']);
@@ -164,9 +167,11 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $plugin_id = 'context_aware_block';
     $configuration = [];
 
-    // Mock a context-aware block plugin
-    $target_block = $this->createMock([BlockPluginInterface::class, ContextAwarePluginInterface::class]);
-    
+    // Mock a context-aware block plugin.
+    $target_block = $this->getMockBuilder(BlockPluginInterface::class)
+      ->onlyMethods(['getPluginId', 'getContextDefinitions'])
+      ->getMock();
+
     $context_definitions = [
       'node' => $this->createMock(ContextDefinitionInterface::class),
       'user' => $this->createMock(ContextDefinitionInterface::class),
@@ -201,7 +206,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   }
 
   /**
-   * Tests buildTargetBlockConfigurationForm with configurable and context-aware block.
+   * Tests buildTargetBlockConfigurationForm with configand context-aware block.
    *
    * @covers ::buildTargetBlockConfigurationForm
    */
@@ -209,12 +214,14 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $plugin_id = 'full_featured_block';
     $configuration = [];
 
-    // Mock a block that implements both interfaces
-    $target_block = $this->createMock([
-      BlockPluginInterface::class,
-      PluginFormInterface::class,
-      ContextAwarePluginInterface::class,
-    ]);
+    // Mock a block that implements both interfaces.
+    $target_block = $this->getMockBuilder(BlockPluginInterface::class)
+      ->onlyMethods(['getPluginId', 'buildConfigurationForm', 'getContextDefinitions'])
+      ->getMock();
+
+    $target_block->expects($this->any())
+      ->method('getPluginId')
+      ->willReturn($plugin_id);
 
     $config_form = [
       'advanced_setting' => [
@@ -479,8 +486,10 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         [['target_block', 'config'], ['user_setting' => 'user_value']],
       ]);
 
-    $target_block = $this->createMock([BlockPluginInterface::class, PluginFormInterface::class]);
-    
+    $target_block = $this->getMockBuilder(BlockPluginInterface::class)
+      ->onlyMethods(['getPluginId', 'buildConfigurationForm', 'setConfiguration', 'getConfiguration'])
+      ->getMock();
+
     $target_block
       ->expects($this->once())
       ->method('getConfiguration')
@@ -527,8 +536,10 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         [['target_block', 'config', 'context_mapping'], ['node' => 'current_node', 'user' => 'current_user']],
       ]);
 
-    $target_block = $this->createMock([BlockPluginInterface::class, ContextAwarePluginInterface::class]);
-    
+    $target_block = $this->getMockBuilder(BlockPluginInterface::class)
+      ->onlyMethods(['getPluginId', 'getContextDefinitions', 'setContextMapping', 'getConfiguration'])
+      ->getMock();
+
     $target_block
       ->expects($this->once())
       ->method('getConfiguration')
@@ -677,7 +688,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   public function testGetSelectedTargetFromFormStateInvalidParents(): void {
     $form_state = $this->createMock(FormStateInterface::class);
 
-    // Test with insufficient parents
+    // Test with insufficient parents.
     $triggering_element = [
       '#parents' => ['target_block'],
     ];
@@ -704,7 +715,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   public function testGetSelectedTargetFromFormStateWrongParents(): void {
     $form_state = $this->createMock(FormStateInterface::class);
 
-    // Test with wrong parent structure
+    // Test with wrong parent structure.
     $triggering_element = [
       '#parents' => ['settings', 'other_field', 'value'],
     ];
