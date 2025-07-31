@@ -108,11 +108,13 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $plugin_id = 'test_block';
     $configuration = [];
 
-    // Use a concrete stub that implements BlockPluginInterface (which extends PluginFormInterface)
+    // Mock a block plugin that implements BlockPluginInterface (which extends PluginFormInterface)
     // but returns empty configuration form to simulate a "simple" block
-    $target_block = new SimpleBlockStub($plugin_id);
+    $target_block = $this->createMock(BlockPluginInterface::class);
+    $target_block->method('buildConfigurationForm')
+      ->willReturn([]);
     
-    // Verify this stub implements PluginFormInterface but returns empty config
+    // Verify this mock implements PluginFormInterface but returns empty config
     $this->assertTrue($target_block instanceof PluginFormInterface);
     $config_result = $target_block->buildConfigurationForm([], new FormState());
     $this->assertIsArray($config_result);
