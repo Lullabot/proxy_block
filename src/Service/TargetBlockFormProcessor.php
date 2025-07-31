@@ -114,7 +114,7 @@ class TargetBlockFormProcessor {
         $this->blockManager->createInstance($target_block_plugin, $block_config);
       }
       catch (PluginException $e) {
-        $form_state->setErrorByName('target_block][id', $this->t('Invalid target block plugin: @message', [
+        $form_state->setErrorByName('target_block[id]', $this->t('Invalid target block plugin: @message', [
           '@message' => $e->getMessage(),
         ]));
       }
