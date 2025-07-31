@@ -57,11 +57,24 @@ class TargetBlockFormProcessor {
       if ($target_block instanceof PluginFormInterface) {
         $config_form = $target_block->buildConfigurationForm([], new FormState());
 
-        $form_elements['block_config'] = [
-          '#type' => 'details',
-          '#title' => $this->t('Block Configuration'),
-          '#open' => TRUE,
-        ] + $config_form;
+        // If the config form is empty, show no_config message
+        if (empty($config_form)) {
+          $form_elements['no_config'] = [
+            '#type' => 'details',
+            '#title' => $this->t('Block Configuration'),
+            '#open' => TRUE,
+            'message' => [
+              '#markup' => $this->t('This block does not have any configuration options.'),
+            ],
+          ];
+        }
+        else {
+          $form_elements['block_config'] = [
+            '#type' => 'details',
+            '#title' => $this->t('Block Configuration'),
+            '#open' => TRUE,
+          ] + ($config_form ?? []);
+        }
       }
       else {
         $form_elements['no_config'] = [
@@ -132,6 +145,7 @@ class TargetBlockFormProcessor {
    */
   public function submitTargetBlock(FormStateInterface $form_state): array {
     $target_plugin_id = $form_state->getValue(['target_block', 'id']);
+    $configuration = [];
     $configuration['target_block']['id'] = $target_plugin_id;
 
     if (!empty($target_plugin_id)) {
@@ -142,18 +156,20 @@ class TargetBlockFormProcessor {
 
         if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
           $target_block->setConfiguration($block_config + $target_block->getConfiguration());
-          $configuration['target_block']['config'] = $target_block->getConfiguration();
         }
-        else {
-          $configuration['target_block']['config'] = $block_config;
-        }
-
+        
         if ($target_block instanceof ContextAwarePluginInterface) {
           $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
           $target_block->setContextMapping($context_mapping);
         }
 
-        $configuration['target_block']['config'] = $target_block->getConfiguration();
+        // Get final configuration after all modifications
+        if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
+          $configuration['target_block']['config'] = $target_block->getConfiguration();
+        }
+        else {
+          $configuration['target_block']['config'] = $block_config;
+        }
       }
       catch (PluginException $e) {
         $configuration['target_block']['config'] = [];
