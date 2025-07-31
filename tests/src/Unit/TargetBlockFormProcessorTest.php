@@ -336,7 +336,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $form_state
       ->expects($this->once())
       ->method('setErrorByName')
-      ->with('target_block[id]', $this->isInstanceOf(TranslatableMarkup::class));
+      ->with('target_block][id', $this->isInstanceOf(TranslatableMarkup::class));
 
     $this->processor->validateTargetBlock($form_state, $configuration);
 
