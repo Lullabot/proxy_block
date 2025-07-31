@@ -86,20 +86,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   }
 
   /**
-   * Tests constructor and dependency injection.
-   *
-   * @covers ::__construct
-   */
-  public function testConstruct(): void {
-    $processor = new TargetBlockFormProcessor(
-      $this->blockManager,
-      $this->contextManager
-    );
-
-    $this->assertInstanceOf(TargetBlockFormProcessor::class, $processor);
-  }
-
-  /**
    * Tests buildTargetBlockConfigurationForm with a simple block.
    *
    * The block has no context and no config.
@@ -116,13 +102,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $target_block = $this->createMock(BlockPluginInterface::class);
     $target_block->method('buildConfigurationForm')
       ->willReturn([]);
-
-    // Verify this mock implements PluginFormInterface but returns empty config.
-    $this->assertTrue($target_block instanceof PluginFormInterface);
-    $config_result = $target_block->buildConfigurationForm([], new FormState());
-    $this->assertIsArray($config_result);
-    $this->assertEmpty($config_result);
-    $this->assertFalse($target_block instanceof ContextAwarePluginInterface);
 
     $this->blockManager
       ->expects($this->once())
@@ -339,8 +318,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $this->processor->validateTargetBlock($form_state, $configuration);
 
-    // Assert that no exception was thrown (test passes if we reach this point).
-    $this->assertTrue(TRUE);
+    // Test passes if no exception is thrown and no error is set.
   }
 
   /**
@@ -378,8 +356,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $this->processor->validateTargetBlock($form_state, $configuration);
 
-    // Assert that error was set (test passes if we reach this point).
-    $this->assertTrue(TRUE);
+    // Test passes if error is set via setErrorByName.
   }
 
   /**
@@ -448,8 +425,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $this->processor->validateTargetBlock($form_state, $configuration);
 
-    // Assert that no exception was thrown (test passes if we reach this point).
-    $this->assertTrue(TRUE);
+    // Test passes if no exception is thrown and fallback config is used.
   }
 
   /**
