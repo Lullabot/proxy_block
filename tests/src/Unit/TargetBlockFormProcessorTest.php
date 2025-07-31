@@ -9,6 +9,7 @@ use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -62,7 +63,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         return new TranslatableMarkup('@string', ['@string' => $string], [], $this->stringTranslation);
       });
 
-    // Create a partial mock to avoid container dependencies in addContextAssignmentElement
+    // Create a partial mock to avoid container dependencies in
+    // addContextAssignmentElement.
     $this->processor = $this->getMockBuilder(TargetBlockFormProcessor::class)
       ->setConstructorArgs([$this->blockManager, $this->contextManager])
       ->onlyMethods(['addContextAssignmentElement'])
@@ -108,13 +110,14 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
     $plugin_id = 'test_block';
     $configuration = [];
 
-    // Mock a block plugin that implements BlockPluginInterface (which extends PluginFormInterface)
-    // but returns empty configuration form to simulate a "simple" block
+    // Mock a block plugin that implements BlockPluginInterface (which extends
+    // PluginFormInterface) but returns empty configuration form to simulate a
+    // "simple" block.
     $target_block = $this->createMock(BlockPluginInterface::class);
     $target_block->method('buildConfigurationForm')
       ->willReturn([]);
-    
-    // Verify this mock implements PluginFormInterface but returns empty config
+
+    // Verify this mock implements PluginFormInterface but returns empty config.
     $this->assertTrue($target_block instanceof PluginFormInterface);
     $config_result = $target_block->buildConfigurationForm([], new FormState());
     $this->assertIsArray($config_result);
@@ -228,7 +231,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   }
 
   /**
-   * Tests buildTargetBlockConfigurationForm with configand context-aware block.
+   * Test buildTargetBlockConfigurationForm with config and context-aware block.
    *
    * @covers ::buildTargetBlockConfigurationForm
    */
@@ -319,7 +322,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return ['some_config' => 'value'];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     $target_block = $this->createMock(BlockPluginInterface::class);
@@ -359,7 +362,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return [];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     $this->blockManager
@@ -428,7 +431,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return NULL;
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     $target_block = $this->createMock(BlockPluginInterface::class);
@@ -467,7 +470,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return ['block_setting' => 'value'];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     $target_block = $this->createMock(BlockPluginInterface::class);
@@ -475,7 +478,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
       ->expects($this->exactly(2))
       ->method('getConfiguration')
       ->willReturn(['block_setting' => 'value', 'default_setting' => 'default']);
-    
+
     $target_block
       ->expects($this->once())
       ->method('setConfiguration')
@@ -515,10 +518,11 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return ['user_setting' => 'user_value'];
         }
+        // @phpstan-ignore-next-line
         if ($key === ['target_block', 'config', 'context_mapping']) {
           return [];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     // Create a test stub that implements PluginFormInterface.
@@ -560,10 +564,11 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return ['setting' => 'value'];
         }
+        // @phpstan-ignore-next-line
         if ($key === ['target_block', 'config', 'context_mapping']) {
           return ['node' => 'current_node', 'user' => 'current_user'];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     // Create a test stub that implements ContextAwarePluginInterface.
@@ -630,7 +635,7 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         if ($key === ['target_block', 'config']) {
           return ['setting' => 'value'];
         }
-        $this->fail('Unexpected getValue call with key: ' . print_r($key, true));
+        $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
     $this->blockManager
