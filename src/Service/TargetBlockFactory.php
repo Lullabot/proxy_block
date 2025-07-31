@@ -15,9 +15,9 @@ use Drupal\Core\Plugin\ContextAwarePluginInterface;
 final class TargetBlockFactory {
 
   /**
-   * Cached target block instance.
+   * Cached target block instances keyed by configuration hash.
    */
-  protected ?BlockPluginInterface $targetBlockInstance = NULL;
+  protected array $targetBlockInstances = [];
 
   /**
    * Constructs a new TargetBlockFactory object.
@@ -43,10 +43,25 @@ final class TargetBlockFactory {
    *   The target block plugin or NULL if creation failed.
    */
   public function getTargetBlock(array $configuration): ?BlockPluginInterface {
-    if ($this->targetBlockInstance === NULL) {
-      $this->targetBlockInstance = $this->createTargetBlock($configuration);
+    $cache_key = $this->generateCacheKey($configuration);
+    if (!isset($this->targetBlockInstances[$cache_key])) {
+      $this->targetBlockInstances[$cache_key] = $this->createTargetBlock($configuration);
     }
-    return $this->targetBlockInstance;
+    return $this->targetBlockInstances[$cache_key];
+  }
+
+  /**
+   * Generates a cache key based on the target block configuration.
+   *
+   * @param array $configuration
+   *   The proxy block configuration.
+   *
+   * @return string
+   *   A unique cache key for the configuration.
+   */
+  protected function generateCacheKey(array $configuration): string {
+    $target_block_config = $configuration['target_block'] ?? [];
+    return hash('sha256', serialize($target_block_config));
   }
 
   /**
