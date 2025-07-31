@@ -31,6 +31,8 @@ class TestableTargetBlockContextManager extends TargetBlockContextManager {
 
   /**
    * {@inheritdoc}
+   *
+   * @return \Drupal\Core\Plugin\Context\ContextInterface
    */
   protected function createDefaultViewModeContext() {
     return $this->mockViewModeContext;
