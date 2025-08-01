@@ -27,7 +27,6 @@ class TrivialKernelTrivialTest extends KernelTestBase {
    * @coversNothing
    */
   public function testSomething(): void {
-    // @phpstan-ignore-next-line method.alreadyNarrowedType
     $this->assertTrue(TRUE);
   }
 
