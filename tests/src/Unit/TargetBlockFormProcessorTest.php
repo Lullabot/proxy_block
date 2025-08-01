@@ -108,7 +108,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
-    $this->assertIsArray($result);
     $this->assertArrayHasKey('no_config', $result);
     $this->assertEquals('details', $result['no_config']['#type']);
     $this->assertInstanceOf(TranslatableMarkup::class, $result['no_config']['#title']);
@@ -153,7 +152,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
-    $this->assertIsArray($result);
     $this->assertArrayHasKey('block_config', $result);
     $this->assertEquals('details', $result['block_config']['#type']);
     $this->assertInstanceOf(TranslatableMarkup::class, $result['block_config']['#title']);
@@ -201,7 +199,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
-    $this->assertIsArray($result);
     $this->assertArrayHasKey('no_config', $result);
     $this->assertArrayHasKey('context_mapping', $result);
   }
@@ -246,7 +243,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
-    $this->assertIsArray($result);
     $this->assertArrayHasKey('block_config', $result);
     $this->assertArrayHasKey('context_mapping', $result);
     $this->assertArrayHasKey('advanced_setting', $result['block_config']);
@@ -270,7 +266,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
-    $this->assertIsArray($result);
     $this->assertArrayHasKey('error', $result);
     $this->assertEquals('details', $result['error']['#type']);
     $this->assertInstanceOf(TranslatableMarkup::class, $result['error']['#title']);
@@ -465,7 +460,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->submitTargetBlock($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('simple_block', $result['target_block']['id']);
     $this->assertEquals([
       'block_setting' => 'value',
@@ -511,7 +505,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->submitTargetBlock($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('configurable_block', $result['target_block']['id']);
     $this->assertEquals([
       'user_setting' => 'user_value',
@@ -557,7 +550,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->submitTargetBlock($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('context_aware_block', $result['target_block']['id']);
     $this->assertEquals([
       'setting' => 'value',
@@ -585,7 +577,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->submitTargetBlock($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('', $result['target_block']['id']);
     $this->assertEquals([], $result['target_block']['config']);
   }
@@ -619,7 +610,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->submitTargetBlock($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('invalid_block', $result['target_block']['id']);
     $this->assertEquals([], $result['target_block']['config']);
   }
@@ -657,7 +647,6 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
 
     $result = $this->processor->getSelectedTargetFromFormState($form_state);
 
-    $this->assertIsArray($result);
     $this->assertEquals('selected_block', $result['id']);
     $this->assertEquals(['setting' => 'value'], $result['config']);
   }
