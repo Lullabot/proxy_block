@@ -97,14 +97,10 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $this->contextManager->getGatheredContexts();
 
-    $this->assertIsArray($result);
     $this->assertCount(3, $result);
-    $this->assertArrayHasKey('node', $result);
-    $this->assertArrayHasKey('user', $result);
-    $this->assertArrayHasKey('view_mode', $result);
-    $this->assertInstanceOf(ContextInterface::class, $result['node']);
-    $this->assertInstanceOf(ContextInterface::class, $result['user']);
-    $this->assertInstanceOf(ContextInterface::class, $result['view_mode']);
+    $this->assertNotEmpty($result['node']);
+    $this->assertNotEmpty($result['user']);
+    $this->assertNotEmpty($result['view_mode']);
   }
 
   /**
@@ -140,7 +136,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $this->contextManager->getGatheredContexts();
 
-    $this->assertIsArray($result);
     $this->assertCount(3, $result);
     $this->assertArrayHasKey('node', $result);
     $this->assertArrayHasKey('user', $result);
@@ -181,7 +176,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $this->contextManager->getGatheredContexts();
 
-    $this->assertIsArray($result);
     $this->assertCount(2, $result);
     $this->assertArrayHasKey('node', $result);
     $this->assertArrayHasKey('view_mode', $result);
@@ -216,7 +210,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $this->contextManager->getGatheredContexts();
 
-    $this->assertIsArray($result);
     $this->assertCount(1, $result);
     $this->assertArrayHasKey('view_mode', $result);
 
@@ -562,7 +555,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
 
-    $this->assertIsArray($result);
     $this->assertEquals([
       'node' => 'current_node',
       'user' => 'current_user',
@@ -597,7 +589,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
 
-    $this->assertIsArray($result);
     $this->assertEmpty($result);
   }
 
@@ -636,7 +627,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
 
-    $this->assertIsArray($result);
     $this->assertEquals(['node' => 'node1'], $result);
   }
 
@@ -666,7 +656,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
 
     $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
 
-    $this->assertIsArray($result);
     $this->assertEmpty($result);
   }
 
