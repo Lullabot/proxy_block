@@ -7,7 +7,6 @@ namespace Drupal\Tests\proxy_block\Unit;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\Cache;
 use Drupal\proxy_block\Service\TargetBlockCacheManager;
-use Drupal\Tests\UnitTestCase;
 
 /**
  * Tests the TargetBlockCacheManager service.
@@ -16,19 +15,19 @@ use Drupal\Tests\UnitTestCase;
  *
  * @coversDefaultClass \Drupal\proxy_block\Service\TargetBlockCacheManager
  */
-class TargetBlockCacheManagerTest extends UnitTestCase {
+class TargetBlockCacheManagerTest extends ProxyBlockUnitTestBase {
 
   /**
    * The target block cache manager under test.
    */
-  private TargetBlockCacheManager $cacheManager;
+  private TargetBlockCacheManager $testCacheManager;
 
   /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->cacheManager = new TargetBlockCacheManager();
+    $this->testCacheManager = new TargetBlockCacheManager();
   }
 
   /**
@@ -39,7 +38,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   public function testGetCacheContextsWithNullTargetBlock(): void {
     $parent_contexts = ['theme', 'languages', 'user'];
 
-    $result = $this->cacheManager->getCacheContexts(NULL, $parent_contexts);
+    $result = $this->testCacheManager->getCacheContexts(NULL, $parent_contexts);
 
     $this->assertEquals($parent_contexts, $result);
   }
@@ -56,7 +55,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_tags = ['config:block.block.test', 'config:system.theme'];
 
-    $result = $this->cacheManager->getCacheTags($target_block, $parent_tags);
+    $result = $this->testCacheManager->getCacheTags($target_block, $parent_tags);
 
     $expected = ['config:block.block.test', 'config:system.theme', 'node:1', 'user:2'];
     sort($expected);
@@ -72,7 +71,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   public function testGetCacheTagsWithNullTargetBlock(): void {
     $parent_tags = ['config:block.block.test', 'config:system.theme'];
 
-    $result = $this->cacheManager->getCacheTags(NULL, $parent_tags);
+    $result = $this->testCacheManager->getCacheTags(NULL, $parent_tags);
 
     $this->assertEquals($parent_tags, $result);
   }
@@ -87,7 +86,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
     $target_block->method('getCacheTags')
       ->willReturn(['entity:node', 'entity:user']);
 
-    $result = $this->cacheManager->getCacheTags($target_block, []);
+    $result = $this->testCacheManager->getCacheTags($target_block, []);
 
     $expected = ['entity:node', 'entity:user'];
     sort($expected);
@@ -107,7 +106,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_tags = ['config:block.block.test', 'user:current'];
 
-    $result = $this->cacheManager->getCacheTags($target_block, $parent_tags);
+    $result = $this->testCacheManager->getCacheTags($target_block, $parent_tags);
 
     // Cache::mergeTags should handle deduplication.
     $expected = ['config:block.block.test', 'user:current', 'node:1'];
@@ -128,7 +127,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_max_age = 3600;
 
-    $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
     // Should return the minimum value.
     $this->assertEquals(1800, $result);
@@ -142,7 +141,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
   public function testGetCacheMaxAgeWithNullTargetBlock(): void {
     $parent_max_age = 3600;
 
-    $result = $this->cacheManager->getCacheMaxAge(NULL, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge(NULL, $parent_max_age);
 
     $this->assertEquals($parent_max_age, $result);
   }
@@ -159,7 +158,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_max_age = 1200;
 
-    $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
     // When one is permanent, should return the other's value.
     $this->assertEquals($parent_max_age, $result);
@@ -177,7 +176,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_max_age = Cache::PERMANENT;
 
-    $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
     // When parent is permanent, should return target's value.
     $this->assertEquals(600, $result);
@@ -195,7 +194,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_max_age = Cache::PERMANENT;
 
-    $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
     $this->assertEquals(Cache::PERMANENT, $result);
   }
@@ -212,7 +211,7 @@ class TargetBlockCacheManagerTest extends UnitTestCase {
 
     $parent_max_age = 3600;
 
-    $result = $this->cacheManager->getCacheMaxAge($target_block, $parent_max_age);
+    $result = $this->testCacheManager->getCacheMaxAge($target_block, $parent_max_age);
 
     // Should return 0 (no cache) when the target block has no cache.
     $this->assertEquals(0, $result);

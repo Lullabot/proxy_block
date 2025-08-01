@@ -5,16 +5,11 @@ declare(strict_types=1);
 namespace Drupal\Tests\proxy_block\Unit;
 
 use Drupal\Component\Plugin\Exception\PluginException;
-use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFormProcessor;
-use Drupal\Tests\UnitTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
-use Drupal\Core\StringTranslation\TranslationInterface;
 
 /**
  * Tests the TargetBlockFormProcessor service.
@@ -23,17 +18,7 @@ use Drupal\Core\StringTranslation\TranslationInterface;
  *
  * @coversDefaultClass \Drupal\proxy_block\Service\TargetBlockFormProcessor
  */
-class TargetBlockFormProcessorTest extends UnitTestCase {
-
-  /**
-   * The block manager mock.
-   */
-  private BlockManagerInterface|MockObject $blockManager;
-
-  /**
-   * The context manager mock.
-   */
-  private TargetBlockContextManager|MockObject $contextManager;
+class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
 
   /**
    * The target block form processor under test.
@@ -41,24 +26,10 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
   private TargetBlockFormProcessor $processor;
 
   /**
-   * The string translation mock.
-   */
-  private TranslationInterface|MockObject $stringTranslation;
-
-  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
     parent::setUp();
-
-    $this->blockManager = $this->createMock(BlockManagerInterface::class);
-    $this->contextManager = $this->createMock(TargetBlockContextManager::class);
-
-    $this->stringTranslation = $this->createMock(TranslationInterface::class);
-    $this->stringTranslation->method('translate')
-      ->willReturnCallback(function ($string) {
-        return new TranslatableMarkup('@string', ['@string' => $string], [], $this->stringTranslation);
-      });
 
     // Create a partial mock to avoid container dependencies in
     // addContextAssignmentElement.
@@ -142,8 +113,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
       ],
     ];
 
-    // Create a test stub that implements the required interfaces.
-    $target_block = new TestBlockStub($plugin_id, [], $config_form);
+    // Create a configurable block mock instead of using TestBlockStub.
+    $target_block = $this->createConfigurableBlockMock($plugin_id, $config_form, ['existing_config' => 'value']);
 
     $this->blockManager
       ->expects($this->once())
@@ -180,8 +151,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
       'user' => $this->createMock(ContextDefinitionInterface::class),
     ];
 
-    // Create a test stub that implements the required interfaces.
-    $target_block = new TestBlockStub($plugin_id, $context_definitions);
+    // Create a context-aware block mock instead of using TestBlockStub.
+    $target_block = $this->createContextAwareBlockMock($plugin_id, $context_definitions);
 
     $gathered_contexts = [
       'available_context_1' => 'Context 1',
@@ -226,8 +197,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
       ],
     ];
 
-    // Create a test stub that implements all interfaces.
-    $target_block = new TestBlockStub($plugin_id, $context_definitions, $config_form);
+    // Create a full-featured block mock instead of using TestBlockStub.
+    $target_block = $this->createFullFeaturedBlockMock($plugin_id, $config_form, $context_definitions);
 
     $gathered_contexts = [
       'available_context' => 'Available Context',
@@ -498,10 +469,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
-    // Create a test stub that implements PluginFormInterface.
-    $target_block = new TestBlockStub('configurable_block');
-    $target_block->setConfiguration(['default_setting' => 'default']);
-    $target_block->setConfiguration(['user_setting' => 'user_value']);
+    // Create a configurable block mock instead of using TestBlockStub.
+    $target_block = $this->createConfigurableBlockMock('configurable_block', [], ['user_setting' => 'user_value', 'default_setting' => 'default']);
 
     $this->blockManager
       ->expects($this->once())
@@ -544,10 +513,8 @@ class TargetBlockFormProcessorTest extends UnitTestCase {
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
       });
 
-    // Create a test stub that implements ContextAwarePluginInterface.
-    $target_block = new TestBlockStub('context_aware_block');
-    $target_block->setConfiguration(['setting' => 'value']);
-    $target_block->setContextMapping(['node' => 'current_node', 'user' => 'current_user']);
+    // Create a context-aware block mock instead of using TestBlockStub.
+    $target_block = $this->createContextAwareBlockMock('context_aware_block', [], ['node' => 'current_node', 'user' => 'current_user'], ['setting' => 'value', 'context_mapping' => ['node' => 'current_node', 'user' => 'current_user']]);
 
     $this->blockManager
       ->expects($this->once())
