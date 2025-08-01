@@ -38,6 +38,22 @@ class TargetBlockFactoryTest extends UnitTestCase {
   private TargetBlockFactory $factory;
 
   /**
+   * Helper method to invoke the protected generateCacheKey method.
+   *
+   * @param array $configuration
+   *   The configuration array.
+   *
+   * @return string
+   *   The generated cache key.
+   */
+  private function invokeGenerateCacheKey(array $configuration): string {
+    $reflection = new \ReflectionClass($this->factory);
+    $method = $reflection->getMethod('generateCacheKey');
+    $method->setAccessible(TRUE);
+    return $method->invoke($this->factory, $configuration);
+  }
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -116,14 +132,14 @@ class TargetBlockFactoryTest extends UnitTestCase {
   }
 
   /**
-   * Tests getTargetBlock with empty configuration.
+   * Tests getTargetBlock with various invalid configurations.
+   *
+   * @dataProvider provideInvalidConfigurations
    *
    * @covers ::getTargetBlock
    * @covers ::createTargetBlock
    */
-  public function testGetTargetBlockWithEmptyConfiguration(): void {
-    $configuration = [];
-
+  public function testGetTargetBlockWithInvalidConfiguration(array $configuration): void {
     $this->blockManager
       ->expects($this->never())
       ->method('createInstance');
@@ -134,48 +150,32 @@ class TargetBlockFactoryTest extends UnitTestCase {
   }
 
   /**
-   * Tests getTargetBlock with missing plugin ID.
+   * Provides invalid configurations for testing getTargetBlock.
    *
-   * @covers ::getTargetBlock
-   * @covers ::createTargetBlock
+   * @return array<string, array<array>>
+   *   Array of test cases with invalid configurations.
    */
-  public function testGetTargetBlockWithMissingPluginId(): void {
-    $configuration = [
-      'target_block' => [
-        'config' => ['setting' => 'value'],
+  public static function provideInvalidConfigurations(): array {
+    return [
+      'empty configuration' => [
+        [],
+      ],
+      'missing plugin id' => [
+        [
+          'target_block' => [
+            'config' => ['setting' => 'value'],
+          ],
+        ],
+      ],
+      'empty plugin id' => [
+        [
+          'target_block' => [
+            'id' => '',
+            'config' => ['setting' => 'value'],
+          ],
+        ],
       ],
     ];
-
-    $this->blockManager
-      ->expects($this->never())
-      ->method('createInstance');
-
-    $result = $this->factory->getTargetBlock($configuration);
-
-    $this->assertNull($result);
-  }
-
-  /**
-   * Tests getTargetBlock with empty plugin ID.
-   *
-   * @covers ::getTargetBlock
-   * @covers ::createTargetBlock
-   */
-  public function testGetTargetBlockWithEmptyPluginId(): void {
-    $configuration = [
-      'target_block' => [
-        'id' => '',
-        'config' => ['setting' => 'value'],
-      ],
-    ];
-
-    $this->blockManager
-      ->expects($this->never())
-      ->method('createInstance');
-
-    $result = $this->factory->getTargetBlock($configuration);
-
-    $this->assertNull($result);
   }
 
   /**
@@ -288,12 +288,8 @@ class TargetBlockFactoryTest extends UnitTestCase {
       ],
     ];
 
-    $reflection = new \ReflectionClass($this->factory);
-    $method = $reflection->getMethod('generateCacheKey');
-    $method->setAccessible(TRUE);
-
-    $key1 = $method->invoke($this->factory, $configuration1);
-    $key2 = $method->invoke($this->factory, $configuration2);
+    $key1 = $this->invokeGenerateCacheKey($configuration1);
+    $key2 = $this->invokeGenerateCacheKey($configuration2);
 
     $this->assertEquals($key1, $key2);
     $this->assertIsString($key1);
@@ -321,12 +317,8 @@ class TargetBlockFactoryTest extends UnitTestCase {
       ],
     ];
 
-    $reflection = new \ReflectionClass($this->factory);
-    $method = $reflection->getMethod('generateCacheKey');
-    $method->setAccessible(TRUE);
-
-    $key1 = $method->invoke($this->factory, $configuration1);
-    $key2 = $method->invoke($this->factory, $configuration2);
+    $key1 = $this->invokeGenerateCacheKey($configuration1);
+    $key2 = $this->invokeGenerateCacheKey($configuration2);
 
     $this->assertNotEquals($key1, $key2);
     $this->assertIsString($key1);
@@ -341,11 +333,7 @@ class TargetBlockFactoryTest extends UnitTestCase {
   public function testGenerateCacheKeyWithMissingTargetBlock(): void {
     $configuration = [];
 
-    $reflection = new \ReflectionClass($this->factory);
-    $method = $reflection->getMethod('generateCacheKey');
-    $method->setAccessible(TRUE);
-
-    $key = $method->invoke($this->factory, $configuration);
+    $key = $this->invokeGenerateCacheKey($configuration);
 
     $this->assertIsString($key);
     // SHA256 hash length.
