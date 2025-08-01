@@ -135,7 +135,7 @@ class TestBlockStub implements BlockPluginInterface, ContextAwarePluginInterface
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
-    return $this->configForm ?? [];
+    return $this->configForm ?: [];
   }
 
   /**
@@ -281,13 +281,6 @@ class TestBlockStub implements BlockPluginInterface, ContextAwarePluginInterface
    */
   public function validateContexts(): ConstraintViolationListInterface {
     return new ConstraintViolationList();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function createPlaceholder(): array {
-    return ['#markup' => 'Placeholder'];
   }
 
 }
