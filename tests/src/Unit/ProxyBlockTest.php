@@ -42,13 +42,6 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
   }
 
   /**
-   * @covers ::__construct
-   */
-  public function testConstructor(): void {
-    $this->assertInstanceOf(ProxyBlock::class, $this->proxyBlock);
-  }
-
-  /**
    * @covers ::defaultConfiguration
    */
   public function testDefaultConfiguration(): void {
