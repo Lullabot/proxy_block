@@ -5,4 +5,3 @@ parameters:
     - tests/
   ignoreErrors:
     - '#Trying to mock an undefined method .* on class .*ContextRepositoryInterface#'
-    - '#Call to method PHPUnit\\Framework\\Assert::assertTrue\(\) with true will always evaluate to true\.#'
