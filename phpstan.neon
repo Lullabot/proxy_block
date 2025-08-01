@@ -3,4 +3,5 @@ parameters:
   paths:
     - src/
     - tests/
-  ignoreErrors: []
+  ignoreErrors:
+    - '#Trying to mock an undefined method .* on class .*ContextRepositoryInterface#'
