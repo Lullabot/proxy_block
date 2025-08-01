@@ -16,7 +16,7 @@ use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\ConstraintViolationList;
 
 /**
- * A test stub implementing BlockPluginInterface with configurable and context-aware capabilities.
+ * A test stub implementing BlockPluginInterface with configurable capabilities.
  *
  * This class provides a lightweight implementation of block plugin interfaces
  * for unit testing purposes. It's used internally by ProxyBlockUnitTestBase

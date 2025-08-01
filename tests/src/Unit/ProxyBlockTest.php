@@ -8,7 +8,6 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\proxy_block\Plugin\Block\ProxyBlock;
-use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Unit tests for ProxyBlock plugin.
@@ -256,29 +255,18 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $config = ['target_block' => ['id' => 'system_branding_block']];
 
     $target_block = $this->createMock(BlockBase::class);
-    $request = $this->createMock(Request::class);
-
-    $request
-      ->method('getPathInfo')
-      ->willReturn('/admin/structure/types/article/display/default/layout');
+    $request = $this->createLayoutBuilderAdminRequest();
 
     $this->requestStack
       ->expects($this->once())
       ->method('getCurrentRequest')
       ->willReturn($request);
 
-    // Set up the block definition expectation BEFORE creating the proxy block
-    // Ensure admin_label is never null to prevent TranslatableMarkup from receiving null.
     $this->blockManager
       ->expects($this->once())
       ->method('getDefinition')
       ->with('system_branding_block')
-      ->willReturn([
-        'admin_label' => 'Site branding',
-        'id' => 'system_branding_block',
-        'provider' => 'system',
-        'category' => 'System',
-      ]);
+      ->willReturn($this->createSystemBrandingDefinition());
 
     $proxy_block = new ProxyBlock(
       $config,
@@ -295,7 +283,7 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $expected_config = $proxy_block->getConfiguration();
 
     $this->targetBlockFactory
-      ->expects($this->atLeastOnce())
+      ->expects($this->exactly(4))
       ->method('getTargetBlock')
       ->with($expected_config)
       ->willReturn($target_block);
@@ -317,7 +305,7 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $expected_config = $this->proxyBlock->getConfiguration();
 
     $this->targetBlockFactory
-      ->expects($this->atLeastOnce())
+      ->expects($this->exactly(4))
       ->method('getTargetBlock')
       ->with($expected_config)
       ->willReturn($target_block);
@@ -350,7 +338,7 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $expected_config = $this->proxyBlock->getConfiguration();
 
     $this->targetBlockFactory
-      ->expects($this->atLeastOnce())
+      ->expects($this->once())
       ->method('getTargetBlock')
       ->with($expected_config)
       ->willReturn($target_block);

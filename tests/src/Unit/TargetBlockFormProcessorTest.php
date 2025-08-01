@@ -470,7 +470,11 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       });
 
     // Create a configurable block mock instead of using TestBlockStub.
-    $target_block = $this->createConfigurableBlockMock('configurable_block', [], ['user_setting' => 'user_value', 'default_setting' => 'default']);
+    $target_block = $this->createConfigurableBlockMock(
+      'configurable_block',
+      [],
+      ['user_setting' => 'user_value', 'default_setting' => 'default']
+    );
 
     $this->blockManager
       ->expects($this->once())
@@ -514,7 +518,15 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       });
 
     // Create a context-aware block mock instead of using TestBlockStub.
-    $target_block = $this->createContextAwareBlockMock('context_aware_block', [], ['node' => 'current_node', 'user' => 'current_user'], ['setting' => 'value', 'context_mapping' => ['node' => 'current_node', 'user' => 'current_user']]);
+    $target_block = $this->createContextAwareBlockMock(
+      'context_aware_block',
+      [],
+      ['node' => 'current_node', 'user' => 'current_user'],
+      [
+        'setting' => 'value',
+        'context_mapping' => ['node' => 'current_node', 'user' => 'current_user'],
+      ]
+    );
 
     $this->blockManager
       ->expects($this->once())

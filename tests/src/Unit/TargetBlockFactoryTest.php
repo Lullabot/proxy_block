@@ -10,8 +10,6 @@ use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFactory;
-use Drupal\Tests\UnitTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests the TargetBlockFactory service.

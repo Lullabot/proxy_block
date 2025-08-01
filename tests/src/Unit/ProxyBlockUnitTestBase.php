@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\proxy_block\Unit;
 
+use Symfony\Component\HttpFoundation\Request;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\DependencyInjection\Container;
@@ -289,6 +290,11 @@ abstract class ProxyBlockUnitTestBase extends UnitTestCase {
   }
 
   /**
+   * Layout Builder admin path pattern.
+   */
+  protected const LAYOUT_BUILDER_ADMIN_PATH = '/admin/structure/types/article/display/default/layout';
+
+  /**
    * Creates common block definitions for testing.
    *
    * This method returns a standard set of block definitions that can be
@@ -332,6 +338,34 @@ abstract class ProxyBlockUnitTestBase extends UnitTestCase {
     }
 
     return $definitions;
+  }
+
+  /**
+   * Creates a system branding block definition for testing.
+   *
+   * @return array
+   *   Block definition array for system branding block.
+   */
+  protected function createSystemBrandingDefinition(): array {
+    return [
+      'admin_label' => 'Site branding',
+      'id' => 'system_branding_block',
+      'provider' => 'system',
+      'category' => 'System',
+    ];
+  }
+
+  /**
+   * Creates a mock request with Layout Builder admin path.
+   *
+   * @return \Symfony\Component\HttpFoundation\Request|\PHPUnit\Framework\MockObject\MockObject
+   *   Mock request configured for Layout Builder admin mode.
+   */
+  protected function createLayoutBuilderAdminRequest(): MockObject {
+    $request = $this->createMock(Request::class);
+    $request->method('getPathInfo')
+      ->willReturn(static::LAYOUT_BUILDER_ADMIN_PATH);
+    return $request;
   }
 
   /**
@@ -477,7 +511,7 @@ abstract class ProxyBlockUnitTestBase extends UnitTestCase {
   }
 
   /**
-   * Creates a test block stub with both configurable and context-aware capabilities.
+   * Creates a test block stub with configurable and context-aware capabilities.
    *
    * This method provides a convenient way to create full-featured block mocks
    * with both configuration forms and context awareness.
