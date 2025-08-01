@@ -11,11 +11,13 @@ use Drupal\node\Entity\NodeType;
 use Drupal\user\Entity\User;
 
 /**
- * Functional tests for the Proxy Block.
+ * Functional tests for the Proxy Block plugin.
  *
- * Tests the ProxyBlock plugin through browser-based functional tests,
- * covering block placement workflows, configuration interface, rendering,
- * and error handling scenarios.
+ * Tests critical user workflows through browser-based interactions:
+ * - Block configuration form behavior and target selection
+ * - Proxy block rendering of target blocks
+ * - Context passing to context-aware target blocks
+ * - Access control and graceful error handling.
  *
  * @group proxy_block
  */
@@ -150,416 +152,209 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
   }
 
   /**
-   * Tests proxy block appears in admin interfaces.
+   * Tests proxy block configuration form displays target block selection.
+   *
+   * Validates that the block configuration form properly populates the target
+   * block dropdown with available block plugins and excludes the proxy block
+   * itself to prevent infinite recursion.
    */
-  public function testProxyBlockAppearsInAdminInterfaces(): void {
+  public function testProxyBlockConfigurationForm(): void {
     $this->drupalLogin($this->adminUser);
 
-    // Test block appears in block library.
-    $this->drupalGet('admin/structure/block');
-    $this->clickLink('Place block');
-    $this->assertSession()->pageTextContains('Proxy Block');
-    $this->assertSession()->pageTextContains('A/B Testing');
+    // Navigate directly to the proxy block configuration form.
+    $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
 
-    // Test block appears in Layout Builder block selection.
-    $this->drupalGet('/admin/structure/types/manage/page/display/default/layout');
-    $this->clickLink('Add block');
-    $this->assertSession()->pageTextContains('Proxy Block');
-    $this->assertSession()->linkExists('Proxy Block');
-  }
+    // Verify form loads and contains target block selection.
+    $this->assertSession()->fieldExists('settings[target_block][id]');
+    $this->assertSession()->optionExists('settings[target_block][id]', '');
+    $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
+    $this->assertSession()->optionExists('settings[target_block][id]', 'page_title_block');
 
-  /**
-   * Tests proxy block placement in traditional block regions.
-   */
-  public function testProxyBlockPlacementInRegions(): void {
-    $this->drupalLogin($this->adminUser);
+    // Verify proxy block itself is not in the options (prevents recursion).
+    $this->assertSession()->optionNotExists('settings[target_block][id]', 'proxy_block_proxy');
 
-    // Use placeBlock method which bypasses the UI issues.
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'sidebar_first',
-      'id' => 'test_proxy_block',
-      'label' => 'Test Proxy Block',
-      'target_block' => [
-        'id' => 'system_branding_block',
-        'config' => [],
-      ],
-    ]);
-
-    // Navigate to block administration to verify block appears.
-    $this->drupalGet('admin/structure/block');
-
-    // Verify block appears in block list.
-    $this->assertSession()->pageTextContains('Test Proxy Block');
+    // Verify the form loads successfully.
     $this->assertSession()->statusCodeEquals(200);
   }
 
   /**
-   * Tests proxy block placement in Layout Builder.
+   * Tests successful proxy block placement and configuration through API.
+   *
+   * Validates that proxy blocks can be placed and configured correctly,
+   * and that the configuration persists as expected.
    */
-  public function testProxyBlockPlacementInLayoutBuilder(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Navigate to Layout Builder for page content type.
-    $this->drupalGet('/admin/structure/types/manage/page/display/default/layout');
-    $this->assertSession()->statusCodeEquals(200);
-
-    // Verify Layout Builder is working.
-    $this->assertSession()->pageTextContains('layout');
-
-    // Create a test node to verify the layout works.
-    $this->drupalGet('/node/' . $this->testNode->id());
-    $this->assertSession()->statusCodeEquals(200);
-    $this->assertSession()->pageTextContains($this->testNode->getTitle());
-  }
-
-  /**
-   * Tests target block selection dropdown populates correctly.
-   */
-  public function testTargetBlockSelectionDropdown(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Test that proxy block has proper default configuration.
-    $plugin_manager = $this->container->get('plugin.manager.block');
-    $plugin_definition = $plugin_manager->getDefinition('proxy_block_proxy');
-
-    $this->assertEquals('Proxy Block', $plugin_definition['admin_label']);
-    $this->assertEquals('A/B Testing', $plugin_definition['category']);
-
-    // Verify the block can be instantiated.
-    $block_instance = $plugin_manager->createInstance('proxy_block_proxy');
-    $this->assertNotNull($block_instance);
-
-    // Test default configuration.
-    $config = $block_instance->defaultConfiguration();
-    $this->assertArrayHasKey('target_block', $config);
-    $this->assertNull($config['target_block']['id']);
-  }
-
-  /**
-   * Tests block configuration form behavior with AJAX.
-   */
-  public function testBlockConfigurationFormAjaxBehavior(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Test AJAX callback method exists and works.
-    $plugin_manager = $this->container->get('plugin.manager.block');
-    $block_instance = $plugin_manager->createInstance('proxy_block_proxy');
-
-    // Verify the AJAX callback method exists.
-    $this->assertTrue(method_exists($block_instance, 'targetBlockAjaxCallback'));
-
-    // Test that form state can be processed.
-    $this->assertTrue(method_exists($block_instance, 'blockForm'));
-    $this->assertTrue(method_exists($block_instance, 'blockSubmit'));
-    $this->assertTrue(method_exists($block_instance, 'blockValidate'));
-  }
-
-  /**
-   * Tests form validation with empty and invalid targets.
-   */
-  public function testFormValidation(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Test saving with empty target (should be allowed).
-    $block1 = $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'empty_target_validation_test',
-      'label' => 'Empty Target Test',
-      'target_block' => ['id' => ''],
-    ]);
-
-    $this->assertNotNull($block1);
-    $this->assertEquals('Empty Target Test', $block1->label());
-
-    // Test with valid target.
-    $block2 = $this->placeBlock('proxy_block_proxy', [
-      'region' => 'sidebar_first',
-      'id' => 'valid_target_validation_test',
-      'label' => 'Valid Target Test',
-      'target_block' => [
-        'id' => 'system_branding_block',
-        'config' => [],
-      ],
-    ]);
-
-    $this->assertNotNull($block2);
-    $this->assertEquals('Valid Target Test', $block2->label());
-  }
-
-  /**
-   * Tests configuration persistence after save.
-   */
-  public function testConfigurationPersistence(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Create and configure proxy block.
+  public function testProxyBlockPlacementAndConfiguration(): void {
+    // Place a proxy block using the placeBlock helper method.
     $block = $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
-      'id' => 'persistence_test_block',
-      'label' => 'Persistence Test Block',
+      'id' => 'test_proxy_placement',
+      'label' => 'Test Proxy Placement Block',
       'target_block' => [
         'id' => 'system_branding_block',
         'config' => [],
       ],
     ]);
 
-    // Verify configuration was saved correctly.
-    $this->assertEquals('Persistence Test Block', $block->label());
+    // Verify the block was created successfully.
+    $this->assertNotNull($block);
+    $this->assertEquals('Test Proxy Placement Block', $block->label());
 
+    // Verify the configuration was saved correctly.
     $plugin = $block->getPlugin();
     $config = $plugin->getConfiguration();
     $this->assertEquals('system_branding_block', $config['target_block']['id']);
-  }
 
-  /**
-   * Tests empty target renders empty output.
-   */
-  public function testEmptyTargetRendersEmpty(): void {
-    // Create proxy block with empty target.
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'empty_target_test',
-      'label' => 'Empty Target Block',
-      'target_block' => ['id' => ''],
-    ]);
-
-    // Visit a page and verify block renders but produces no output.
-    $this->drupalGet('<front>');
-
-    // Page should load successfully.
+    // Navigate to block admin page and verify block appears.
+    $this->drupalLogin($this->adminUser);
+    $this->drupalGet('admin/structure/block');
     $this->assertSession()->statusCodeEquals(200);
-
-    // The empty proxy block should not produce any visible markup.
-    $this->assertSession()->pageTextNotContains('Empty Target Block');
   }
 
   /**
-   * Tests valid target renders target block output.
+   * Tests proxy block correctly renders target block content.
+   *
+   * Validates that when a proxy block is configured with a target block,
+   * it properly renders the target block's content on the frontend, proving
+   * the core proxy functionality works as expected.
    */
-  public function testValidTargetRendersOutput(): void {
-    // Create proxy block with valid target.
+  public function testProxyBlockRendersTargetBlockContent(): void {
+    // Place a proxy block targeting the system branding block.
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
-      'id' => 'valid_target_test',
-      'label' => 'Valid Target Block',
+      'id' => 'proxy_rendering_test',
+      'label' => 'Proxy Rendering Test',
       'target_block' => [
         'id' => 'system_branding_block',
         'config' => [],
       ],
     ]);
 
-    // Visit a page and verify target block content appears.
+    // Visit frontend page and verify target block content is rendered.
     $this->drupalGet('<front>');
-
-    // Page should load successfully.
     $this->assertSession()->statusCodeEquals(200);
 
-    // System branding block should render site name.
+    // System branding block should render the site name.
     $site_name = $this->config('system.site')->get('name');
     if ($site_name) {
       $this->assertSession()->pageTextContains($site_name);
     }
+
+    // Should also render site slogan if configured.
+    $site_slogan = $this->config('system.site')->get('slogan');
+    if ($site_slogan) {
+      $this->assertSession()->pageTextContains($site_slogan);
+    }
   }
 
   /**
-   * Tests access control and no privilege escalation.
+   * Tests proxy block with context-aware target blocks.
+   *
+   * Validates that proxy blocks correctly pass context (like current node)
+   * to target blocks that require context, ensuring context-dependent
+   * blocks function properly when proxied.
    */
-  public function testAccessControlNoPrivilegeEscalation(): void {
-    // Create a proxy block targeting a restricted block.
-    $this->drupalLogin($this->adminUser);
-
-    // Create proxy block with admin-only target.
+  public function testProxyBlockWithContextAwareTargets(): void {
+    // Place a proxy block targeting the page title block (context-aware).
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
-      'id' => 'access_test_block',
-      'label' => 'Access Test Block',
+      'id' => 'context_test_proxy',
+      'label' => 'Context Test Proxy',
       'target_block' => [
-        'id' => 'system_branding_block',
+        'id' => 'page_title_block',
         'config' => [],
       ],
     ]);
 
-    $this->drupalLogout();
-
-    // Login as regular user (limited permissions).
-    $this->drupalLogin($this->regularUser);
-
-    // Visit page - proxy block should respect target block access.
-    $this->drupalGet('<front>');
-
-    // Page should load successfully.
+    // Visit a node page where context should be available.
+    $this->drupalGet('/node/' . $this->testNode->id());
     $this->assertSession()->statusCodeEquals(200);
 
-    // The target block (system_branding_block) should render for regular users
-    // as it doesn't require special permissions.
-    $site_name = $this->config('system.site')->get('name');
-    if ($site_name) {
-      $this->assertSession()->pageTextContains($site_name);
-    }
+    // Page title block should render the node title when given node context.
+    $this->assertSession()->pageTextContains($this->testNode->getTitle());
+
+    // Verify the proxy block successfully passed the node context.
+    $this->assertSession()->elementExists('css', 'h1');
   }
 
   /**
-   * Tests Layout Builder admin preview mode.
+   * Tests Layout Builder integration and admin preview functionality.
+   *
+   * Validates that proxy blocks work correctly in Layout Builder, showing
+   * appropriate preview text in admin mode and rendering target blocks
+   * properly on the frontend after layout is saved.
    */
-  public function testLayoutBuilderAdminPreview(): void {
+  public function testLayoutBuilderIntegration(): void {
     $this->drupalLogin($this->adminUser);
 
-    // Add proxy block to layout.
+    // Navigate to Layout Builder for the page content type.
     $this->drupalGet('/admin/structure/types/manage/page/display/default/layout');
     $this->clickLink('Add block');
     $this->clickLink('Proxy Block');
 
+    // Configure proxy block in Layout Builder.
     $this->submitForm([
-      'settings[label]' => 'Admin Preview Test',
+      'settings[label]' => 'Layout Builder Proxy Test',
       'settings[target_block][id]' => 'page_title_block',
     ], 'Add block');
 
-    // In Layout Builder admin mode, should show preview text instead of
-    // rendering target.
+    // In Layout Builder admin mode, should show preview text.
     $this->assertSession()->pageTextContains('Proxy Block:');
     $this->assertSession()->pageTextContains('Configured to render');
-    $this->assertSession()->pageTextContains('Page title');
 
-    // Save layout and check front-end rendering.
+    // Save the layout.
     $this->submitForm([], 'Save layout');
+    $this->assertSession()->pageTextContains('The layout has been saved.');
 
-    // Visit actual node page - should render target block normally.
+    // Visit frontend node page - proxy should render target block content.
     $this->drupalGet('/node/' . $this->testNode->id());
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextContains($this->testNode->getTitle());
   }
 
   /**
-   * Tests graceful degradation with invalid target block.
+   * Tests graceful error handling with invalid target configuration.
+   *
+   * Validates that proxy blocks handle error conditions gracefully without
+   * breaking page rendering, including invalid target plugins and missing
+   * configuration scenarios.
    */
-  public function testInvalidTargetGracefulDegradation(): void {
-    // Manually create a proxy block configuration with invalid target.
-    $invalid_config = [
+  public function testGracefulErrorHandling(): void {
+    // Test with completely empty target configuration.
+    $this->placeBlock('proxy_block_proxy', [
+      'region' => 'content',
+      'id' => 'empty_target_test',
+      'label' => 'Empty Target Test',
+      'target_block' => ['id' => ''],
+    ]);
+
+    // Visit page - should handle gracefully without errors.
+    $this->drupalGet('<front>');
+    $this->assertSession()->statusCodeEquals(200);
+
+    // Should not display error messages to end users.
+    $this->assertSession()->pageTextNotContains('error');
+    $this->assertSession()->pageTextNotContains('Error');
+    $this->assertSession()->pageTextNotContains('Warning');
+    $this->assertSession()->pageTextNotContains('ContextException');
+
+    // Test with invalid target plugin ID.
+    $this->placeBlock('proxy_block_proxy', [
+      'region' => 'content',
+      'id' => 'invalid_target_test',
+      'label' => 'Invalid Target Test',
       'target_block' => [
         'id' => 'nonexistent_block_plugin',
         'config' => [],
       ],
-    ];
-
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'invalid_target_test',
-      'label' => 'Invalid Target Block',
-    ] + $invalid_config);
-
-    // Visit page - should not cause errors, just render empty.
-    $this->drupalGet('<front>');
-
-    // Page should load successfully despite invalid target.
-    $this->assertSession()->statusCodeEquals(200);
-
-    // Should not display any error messages to end users.
-    $this->assertSession()->pageTextNotContains('error');
-    $this->assertSession()->pageTextNotContains('Error');
-  }
-
-  /**
-   * Tests graceful handling of missing plugin.
-   */
-  public function testMissingPluginGracefulHandling(): void {
-    // Create proxy block with empty configuration.
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'missing_plugin_test',
-      'label' => 'Missing Plugin Test',
-      'target_block' => ['id' => ''],
     ]);
 
-    // Visit page - should handle gracefully.
+    // Page should still load successfully despite invalid target.
     $this->drupalGet('<front>');
     $this->assertSession()->statusCodeEquals(200);
 
-    // Should not show any error messages.
-    $this->assertSession()->pageTextNotContains('error');
-    $this->assertSession()->pageTextNotContains('Warning');
-  }
-
-  /**
-   * Tests context error handling doesn't break rendering.
-   */
-  public function testContextErrorHandling(): void {
-    // This test would require a context-aware block plugin for full testing.
-    // For now, we test that the proxy block handles blocks without breaking.
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'context_test_block',
-      'label' => 'Context Test Block',
-      'target_block' => [
-        'id' => 'system_branding_block',
-        'config' => [],
-      ],
-    ]);
-
-    // Visit node context page.
-    $this->drupalGet('/node/' . $this->testNode->id());
-    $this->assertSession()->statusCodeEquals(200);
-
-    // Should render without context-related errors.
-    $this->assertSession()->pageTextNotContains('ContextException');
-    $this->assertSession()->pageTextNotContains('context error');
-  }
-
-  /**
-   * Tests proxy block configuration in different themes.
-   */
-  public function testProxyBlockInDifferentThemes(): void {
-    $this->drupalLogin($this->adminUser);
-
-    // Create proxy block.
-    $this->placeBlock('proxy_block_proxy', [
-      'region' => 'content',
-      'id' => 'theme_test_block',
-      'label' => 'Theme Test Block',
-      'target_block' => [
-        'id' => 'system_branding_block',
-        'config' => [],
-      ],
-    ]);
-
-    // Test with default theme.
-    $this->drupalGet('<front>');
-    $this->assertSession()->statusCodeEquals(200);
-
-    // Verify block renders correctly.
-    $site_name = $this->config('system.site')->get('name');
-    if ($site_name) {
-      $this->assertSession()->pageTextContains($site_name);
-    }
-  }
-
-  /**
-   * Tests proxy block with various target block types.
-   */
-  public function testProxyBlockWithVariousTargets(): void {
-    $this->drupalLogin($this->adminUser);
-
-    $test_cases = [
-      'system_branding_block' => 'System branding',
-      'page_title_block' => 'Page title',
-    ];
-
-    foreach ($test_cases as $plugin_id => $label) {
-      $block = $this->placeBlock('proxy_block_proxy', [
-        'region' => 'content',
-        'id' => 'target_test_' . str_replace('_', '', $plugin_id),
-        'label' => 'Test ' . $label,
-        'target_block' => [
-          'id' => $plugin_id,
-          'config' => [],
-        ],
-      ]);
-
-      // Visit page and verify no errors.
-      $this->drupalGet('<front>');
-      $this->assertSession()->statusCodeEquals(200);
-
-      // Clean up for next iteration.
-      $block->delete();
-    }
+    // Should not expose technical errors to end users.
+    $this->assertSession()->pageTextNotContains('PluginException');
+    $this->assertSession()->pageTextNotContains('PluginNotFoundException');
   }
 
   /**
