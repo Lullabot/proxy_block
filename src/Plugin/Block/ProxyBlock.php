@@ -235,7 +235,10 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $target_plugin_id = $config['target_block']['id'] ?? '';
       if ($target_plugin_id) {
         $block_definition = $this->blockManager->getDefinition($target_plugin_id);
-        $block_label = $block_definition['admin_label'] ?? $target_plugin_id;
+        $admin_label = $block_definition['admin_label'] ?? NULL;
+        $block_label = $admin_label ?: $target_plugin_id ?: 'Unknown Block';
+        // Extra safety: ensure $block_label is always a non-empty string.
+        $block_label = (string) $block_label;
         return [
           '#markup' => '<div class="layout-builder-block"><strong>Proxy Block:</strong> ' . $this->t('Configured to render "@block"', ['@block' => $block_label]) . '</div>',
           '#cache' => [

@@ -9,9 +9,6 @@ use Drupal\Core\Plugin\Context\ContextHandlerInterface;
 use Drupal\Core\Plugin\Context\ContextInterface;
 use Drupal\Core\Plugin\Context\ContextRepositoryInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\Core\StringTranslation\TranslationInterface;
-use Drupal\Tests\UnitTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
@@ -21,7 +18,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversDefaultClass \Drupal\proxy_block\Service\TargetBlockContextManager
  */
-class TargetBlockContextManagerTest extends UnitTestCase {
+class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
   /**
    * The context repository mock.
@@ -36,12 +33,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
   /**
    * The target block context manager under test.
    */
-  private TestableTargetBlockContextManager $contextManager;
-
-  /**
-   * The string translation mock.
-   */
-  private TranslationInterface|MockObject $stringTranslation;
+  private TestableTargetBlockContextManager $testContextManager;
 
   /**
    * {@inheritdoc}
@@ -52,18 +44,12 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     $this->contextRepository = $this->createMock(ContextRepositoryInterface::class);
     $this->contextHandler = $this->createMock(ContextHandlerInterface::class);
 
-    $this->stringTranslation = $this->createMock(TranslationInterface::class);
-    $this->stringTranslation->method('translate')
-      ->willReturnCallback(function ($string) {
-        return new TranslatableMarkup('@string', ['@string' => $string], [], $this->stringTranslation);
-      });
-
-    $this->contextManager = new TestableTargetBlockContextManager(
+    $this->testContextManager = new TestableTargetBlockContextManager(
       $this->contextRepository,
       $this->contextHandler
     );
 
-    $this->contextManager->setStringTranslation($this->stringTranslation);
+    $this->testContextManager->setStringTranslation($this->stringTranslation);
   }
 
   /**
@@ -95,7 +81,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with(['node', 'user', 'view_mode'])
       ->willReturn($runtime_contexts);
 
-    $result = $this->contextManager->getGatheredContexts();
+    $result = $this->testContextManager->getGatheredContexts();
 
     $this->assertCount(3, $result);
     $this->assertNotEmpty($result['node']);
@@ -121,7 +107,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->expects($this->once())
@@ -134,7 +120,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with(['node', 'user'])
       ->willReturn($runtime_contexts);
 
-    $result = $this->contextManager->getGatheredContexts();
+    $result = $this->testContextManager->getGatheredContexts();
 
     $this->assertCount(3, $result);
     $this->assertArrayHasKey('node', $result);
@@ -174,7 +160,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with(['node', 'view_mode'])
       ->willReturn($runtime_contexts);
 
-    $result = $this->contextManager->getGatheredContexts();
+    $result = $this->testContextManager->getGatheredContexts();
 
     $this->assertCount(2, $result);
     $this->assertArrayHasKey('node', $result);
@@ -195,7 +181,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     $runtime_contexts = [];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->expects($this->once())
@@ -208,7 +194,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with([])
       ->willReturn($runtime_contexts);
 
-    $result = $this->contextManager->getGatheredContexts();
+    $result = $this->testContextManager->getGatheredContexts();
 
     $this->assertCount(1, $result);
     $this->assertArrayHasKey('view_mode', $result);
@@ -236,7 +222,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -250,7 +236,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->expects($this->never())
       ->method('applyContextMapping');
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -275,7 +261,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -297,7 +283,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         ['node' => 'current_node']
       );
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -323,7 +309,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -356,7 +342,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         ['node' => 'current_node']
       );
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -381,7 +367,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -403,7 +389,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         ['node' => 'current_node']
       );
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -427,7 +413,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -449,7 +435,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         ['node' => '@missing_context']
       );
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -461,7 +447,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     $target_block = $this->createMock(ContextAwarePluginInterface::class);
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -472,7 +458,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->expects($this->never())
       ->method('applyContextMapping');
 
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -496,7 +482,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->contextManager->setMockViewModeContext($mock_view_mode_context);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
 
     $this->contextRepository
       ->method('getAvailableContexts')
@@ -511,7 +497,7 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->willThrowException(new \Exception('Context application error'));
 
     // Should catch the exception and continue gracefully.
-    $this->contextManager->applyContextsToTargetBlock($target_block);
+    $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
@@ -549,11 +535,11 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         return [];
       });
 
-    $reflection = new \ReflectionClass($this->contextManager);
+    $reflection = new \ReflectionClass($this->testContextManager);
     $method = $reflection->getMethod('generateAutomaticContextMapping');
     $method->setAccessible(TRUE);
 
-    $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
+    $result = $method->invoke($this->testContextManager, $target_block, $available_contexts);
 
     $this->assertEquals([
       'node' => 'current_node',
@@ -583,11 +569,11 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with($available_contexts, $context_definition)
       ->willReturn([]);
 
-    $reflection = new \ReflectionClass($this->contextManager);
+    $reflection = new \ReflectionClass($this->testContextManager);
     $method = $reflection->getMethod('generateAutomaticContextMapping');
     $method->setAccessible(TRUE);
 
-    $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
+    $result = $method->invoke($this->testContextManager, $target_block, $available_contexts);
 
     $this->assertEmpty($result);
   }
@@ -621,11 +607,11 @@ class TargetBlockContextManagerTest extends UnitTestCase {
         'node3' => $available_contexts['node3'],
       ]);
 
-    $reflection = new \ReflectionClass($this->contextManager);
+    $reflection = new \ReflectionClass($this->testContextManager);
     $method = $reflection->getMethod('generateAutomaticContextMapping');
     $method->setAccessible(TRUE);
 
-    $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
+    $result = $method->invoke($this->testContextManager, $target_block, $available_contexts);
 
     $this->assertEquals(['node' => 'node1'], $result);
   }
@@ -650,11 +636,11 @@ class TargetBlockContextManagerTest extends UnitTestCase {
       ->with($available_contexts, $context_definition)
       ->willReturn([]);
 
-    $reflection = new \ReflectionClass($this->contextManager);
+    $reflection = new \ReflectionClass($this->testContextManager);
     $method = $reflection->getMethod('generateAutomaticContextMapping');
     $method->setAccessible(TRUE);
 
-    $result = $method->invoke($this->contextManager, $target_block, $available_contexts);
+    $result = $method->invoke($this->testContextManager, $target_block, $available_contexts);
 
     $this->assertEmpty($result);
   }

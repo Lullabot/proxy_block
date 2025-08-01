@@ -10,8 +10,6 @@ use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFactory;
-use Drupal\Tests\UnitTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests the TargetBlockFactory service.
@@ -20,17 +18,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversDefaultClass \Drupal\proxy_block\Service\TargetBlockFactory
  */
-class TargetBlockFactoryTest extends UnitTestCase {
-
-  /**
-   * The block manager mock.
-   */
-  private BlockManagerInterface|MockObject $blockManager;
-
-  /**
-   * The context manager mock.
-   */
-  private TargetBlockContextManager|MockObject $contextManager;
+class TargetBlockFactoryTest extends ProxyBlockUnitTestBase {
 
   /**
    * The target block factory under test.
