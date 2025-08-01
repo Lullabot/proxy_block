@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Drupal\Tests\proxy_block\Unit;
 
 use Drupal\Component\Plugin\Exception\PluginException;
+use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
+use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFactory;
+use Drupal\Tests\UnitTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests the TargetBlockFactory service.
@@ -44,6 +48,9 @@ class TargetBlockFactoryTest extends ProxyBlockUnitTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
+
+    $this->blockManager = $this->createMock(BlockManagerInterface::class);
+    $this->contextManager = $this->createMock(TargetBlockContextManager::class);
 
     $this->factory = new TargetBlockFactory(
       $this->blockManager,
