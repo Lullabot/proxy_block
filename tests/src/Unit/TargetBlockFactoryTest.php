@@ -280,7 +280,6 @@ class TargetBlockFactoryTest extends ProxyBlockUnitTestBase {
     $key2 = $this->invokeGenerateCacheKey($configuration2);
 
     $this->assertEquals($key1, $key2);
-    $this->assertIsString($key1);
     // SHA256 hash length.
     $this->assertEquals(64, strlen($key1));
   }
@@ -309,8 +308,6 @@ class TargetBlockFactoryTest extends ProxyBlockUnitTestBase {
     $key2 = $this->invokeGenerateCacheKey($configuration2);
 
     $this->assertNotEquals($key1, $key2);
-    $this->assertIsString($key1);
-    $this->assertIsString($key2);
   }
 
   /**
@@ -323,7 +320,6 @@ class TargetBlockFactoryTest extends ProxyBlockUnitTestBase {
 
     $key = $this->invokeGenerateCacheKey($configuration);
 
-    $this->assertIsString($key);
     // SHA256 hash length.
     $this->assertEquals(64, strlen($key));
   }

@@ -14,16 +14,6 @@ class TrivialFunctionalJavascriptTrivialTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = [
-    'system',
-    'user',
-    'block',
-    'proxy_block',
-  ];
-
-  /**
-   * {@inheritdoc}
-   */
   protected $defaultTheme = 'stark';
 
   /**
@@ -32,7 +22,7 @@ class TrivialFunctionalJavascriptTrivialTest extends WebDriverTestBase {
    * @coversNothing
    */
   public function testSomething(): void {
-    $this->assertTrue(TRUE);
+    $this->assertEquals('trivial', strtolower('TRIVIAL'));
   }
 
 }

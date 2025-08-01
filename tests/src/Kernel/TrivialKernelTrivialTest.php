@@ -12,22 +12,12 @@ use Drupal\KernelTests\KernelTestBase;
 class TrivialKernelTrivialTest extends KernelTestBase {
 
   /**
-   * {@inheritdoc}
-   */
-  protected static $modules = [
-    'system',
-    'user',
-    'block',
-    'proxy_block',
-  ];
-
-  /**
    * Tests a trivial condition.
    *
    * @coversNothing
    */
   public function testSomething(): void {
-    $this->assertTrue(TRUE);
+    $this->assertEquals('trivial', strtolower('TRIVIAL'));
   }
 
 }

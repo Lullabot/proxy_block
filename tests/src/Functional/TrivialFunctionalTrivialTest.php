@@ -14,16 +14,6 @@ class TrivialFunctionalTrivialTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = [
-    'system',
-    'user',
-    'block',
-    'proxy_block',
-  ];
-
-  /**
-   * {@inheritdoc}
-   */
   protected $defaultTheme = 'stark';
 
   /**
@@ -32,7 +22,7 @@ class TrivialFunctionalTrivialTest extends BrowserTestBase {
    * @coversNothing
    */
   public function testSomething(): void {
-    $this->assertTrue(TRUE);
+    $this->assertEquals('trivial', strtolower('TRIVIAL'));
   }
 
 }

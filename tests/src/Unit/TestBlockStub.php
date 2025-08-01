@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\proxy_block\Unit;
 
+use Drupal\Component\Plugin\Context\ContextInterface as ComponentContextInterface;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Component\Plugin\Context\ContextInterface as ComponentContextInterface;
 use Drupal\Core\Plugin\Context\ContextInterface;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
-use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Session\AccountInterface;
-use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\ConstraintViolationList;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 /**
  * A test stub implementing BlockPluginInterface with configurable capabilities.
@@ -24,7 +23,7 @@ use Symfony\Component\Validator\ConstraintViolationList;
  *
  * @internal This is a testing utility class for proxy_block unit tests.
  */
-class TestBlockStub implements BlockPluginInterface, PluginFormInterface, ContextAwarePluginInterface {
+class TestBlockStub implements BlockPluginInterface, ContextAwarePluginInterface {
 
   /**
    * The plugin ID.
@@ -142,20 +141,18 @@ class TestBlockStub implements BlockPluginInterface, PluginFormInterface, Contex
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
-    return $this->configForm ?? [];
+    return $this->configForm ?: [];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
-  }
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {}
 
   /**
    * {@inheritdoc}
    */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
-  }
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {}
 
   /**
    * {@inheritdoc}
@@ -245,14 +242,12 @@ class TestBlockStub implements BlockPluginInterface, PluginFormInterface, Contex
   /**
    * {@inheritdoc}
    */
-  public function blockValidate($form, FormStateInterface $form_state): void {
-  }
+  public function blockValidate($form, FormStateInterface $form_state): void {}
 
   /**
    * {@inheritdoc}
    */
-  public function blockSubmit($form, FormStateInterface $form_state): void {
-  }
+  public function blockSubmit($form, FormStateInterface $form_state): void {}
 
   /**
    * {@inheritdoc}
@@ -285,14 +280,20 @@ class TestBlockStub implements BlockPluginInterface, PluginFormInterface, Contex
   /**
    * {@inheritdoc}
    */
-  public function setContext($name, ComponentContextInterface $context): void {
-  }
+  public function setContext($name, ComponentContextInterface $context): void {}
 
   /**
    * {@inheritdoc}
    */
   public function validateContexts(): ConstraintViolationListInterface {
     return new ConstraintViolationList();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function createPlaceholder(): bool {
+    return FALSE;
   }
 
 }
