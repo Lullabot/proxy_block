@@ -32,6 +32,7 @@ class TrivialFunctionalTrivialTest extends BrowserTestBase {
    * @coversNothing
    */
   public function testSomething(): void {
+    // @phpstan-ignore-next-line method.alreadyNarrowedType
     $this->assertTrue(TRUE);
   }
 
