@@ -98,9 +98,6 @@ class TargetBlockContextManagerTest extends UnitTestCase {
     $result = $this->contextManager->getGatheredContexts();
 
     $this->assertCount(3, $result);
-    $this->assertArrayHasKey('node', $result);
-    $this->assertArrayHasKey('user', $result);
-    $this->assertArrayHasKey('view_mode', $result);
     $this->assertInstanceOf(ContextInterface::class, $result['node']);
     $this->assertInstanceOf(ContextInterface::class, $result['user']);
     $this->assertInstanceOf(ContextInterface::class, $result['view_mode']);

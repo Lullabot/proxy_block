@@ -283,4 +283,11 @@ class TestBlockStub implements BlockPluginInterface, ContextAwarePluginInterface
     return new ConstraintViolationList();
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function createPlaceholder(): bool {
+    return FALSE;
+  }
+
 }
