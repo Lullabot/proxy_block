@@ -8,6 +8,10 @@ This is the **Proxy Block** module for Drupal 10/11 - a contributed module that 
 
 The module is part of the A/B Testing ecosystem and integrates with the [A/B Tests](https://www.github.com/Lullabot/ab_tests) project.
 
+## Agent Strategies
+
+- Before starting a task, inspect the sub-agents in @.claude/agents/ Select the sub-agent that is most appropriate for the task if you are confident one of them is appropriate. If you don't think one is appropriate, do not use a sub-agent.
+
 ## Common Development Commands
 
 ### Drupal Commands
@@ -64,12 +68,12 @@ vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
 
 ```bash
 # DDEV commands (when using DDEV local environment)
-ddev composer run-script lint:check
-ddev composer run-script lint:fix
+ddev php vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
+ddev php vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
 
 # Alternative: Standard commands (when not using DDEV)
-composer run-script lint:check
-composer run-script lint:fix
+php ../../../../vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
+php ../../../../vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
 ```
 
 ## Code Architecture
