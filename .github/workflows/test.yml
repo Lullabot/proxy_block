@@ -161,12 +161,29 @@ jobs:
           php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
           sleep 2
 
-      - name: Run tests
+      - name: Run Unit tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: php vendor/bin/phpunit \
           --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-          --debug \
-          ${{ env.MODULE_PATH }}/tests/
+          ${{ env.MODULE_PATH }}/tests/src/Unit
+
+      - name: Run Kernel tests
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: php vendor/bin/phpunit \
+          --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+          ${{ env.MODULE_PATH }}/tests/src/Kernel
+
+      - name: Run Functional tests
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: php vendor/bin/phpunit \
+          --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+          ${{ env.MODULE_PATH }}/tests/src/Functional
+
+      - name: Run FunctionalJavascript tests
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: php vendor/bin/phpunit \
+          --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+          ${{ env.MODULE_PATH }}/tests/src/FunctionalJavascript
 
   code-quality:
     name: '🔍 Code Quality (ESLint, Stylelint, CSpell)'

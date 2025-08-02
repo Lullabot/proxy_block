@@ -31,14 +31,14 @@ class TargetBlockCacheManager {
   ): void {
     $cache_metadata = CacheableMetadata::createFromRenderArray($build);
 
-    // Add target block's cache contexts, tags, and max-age.
+    // Add the target block's cache contexts, tags, and max-age.
     $cache_metadata->addCacheContexts($target_block->getCacheContexts());
     $cache_metadata->addCacheTags($target_block->getCacheTags());
     $cache_metadata->setCacheMaxAge(
       Cache::mergeMaxAges($cache_metadata->getCacheMaxAge(), $target_block->getCacheMaxAge())
     );
 
-    // Add proxy block's own cache metadata.
+    // Add the proxy block's own cache metadata.
     $cache_metadata->addCacheContexts($proxy_block->getCacheContexts());
     $cache_metadata->addCacheTags($proxy_block->getCacheTags());
     $cache_metadata->setCacheMaxAge(
