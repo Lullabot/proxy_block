@@ -196,7 +196,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Verify the block was created successfully.
-    $this->assertNotNull($block);
     $this->assertEquals('Test Proxy Placement Block', $block->label());
 
     // Verify the configuration was saved correctly.
