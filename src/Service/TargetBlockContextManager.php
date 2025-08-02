@@ -54,7 +54,7 @@ class TargetBlockContextManager {
    * Creates a default view_mode context for FieldBlocks.
    *
    * @return \Drupal\Core\Plugin\Context\Context
-   *   A view_mode context with \'default\' value.
+   *   A view_mode context with the 'default' value.
    */
   protected function createDefaultViewModeContext() {
     $context_definition = new ContextDefinition('string', $this->t('View mode'));
@@ -113,13 +113,13 @@ class TargetBlockContextManager {
             $this->contextHandler->applyContextMapping($target_block, $gathered_contexts, $resolved_mapping);
           }
           catch (\Exception $e) {
-            // Context application failed, continue without contexts.
+            // The context application failed, continue without contexts.
           }
         }
       }
     }
     catch (\Exception $e) {
-      // Failed to apply contexts to target block, continue without contexts.
+      // Failed to apply contexts to the target block, continue without contexts.
     }
   }
 

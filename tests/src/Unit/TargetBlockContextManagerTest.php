@@ -166,7 +166,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
     $this->assertArrayHasKey('node', $result);
     $this->assertArrayHasKey('view_mode', $result);
 
-    // Verify the existing view_mode context is preserved.
+    // Verify that the existing view_mode context is preserved.
     $this->assertSame($existing_view_mode_context, $result['view_mode']);
   }
 
@@ -271,7 +271,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn($gathered_contexts);
 
     // The expected contexts will include the view_mode context added by
-    // getGatheredContexts.
+    // getGatheredContexts().
     $expected_contexts = $gathered_contexts + ['view_mode' => $mock_view_mode_context];
 
     $this->contextHandler
@@ -319,7 +319,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn($gathered_contexts);
 
     // The expected contexts will include the view_mode context added by
-    // getGatheredContexts.
+    // getGatheredContexts().
     $expected_contexts = $gathered_contexts + ['view_mode' => $mock_view_mode_context];
 
     $this->contextHandler
@@ -377,7 +377,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn($gathered_contexts);
 
     // The expected contexts will include the view_mode context added by
-    // getGatheredContexts.
+    // getGatheredContexts().
     $expected_contexts = $gathered_contexts + ['view_mode' => $mock_view_mode_context];
 
     $this->contextHandler
@@ -423,7 +423,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn($gathered_contexts);
 
     // The expected contexts will include the view_mode context added by
-    // getGatheredContexts.
+    // getGatheredContexts().
     $expected_contexts = $gathered_contexts + ['view_mode' => $mock_view_mode_context];
 
     $this->contextHandler
