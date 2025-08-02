@@ -119,7 +119,7 @@ class TargetBlockContextManager {
       }
     }
     catch (\Exception $e) {
-      // Failed to apply contexts to the target block, continue without contexts.
+      // Failed to apply contexts to the target block, continue without them.
     }
   }
 
