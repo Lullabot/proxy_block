@@ -404,5 +404,4 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     return $node_type;
   }
 
-
 }

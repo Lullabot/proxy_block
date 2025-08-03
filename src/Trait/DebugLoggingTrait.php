@@ -35,7 +35,6 @@ trait DebugLoggingTrait {
     HtmlOutputLogger::log($formatted_message);
   }
 
-
   /**
    * Chooses an emoji representative for the input string.
    *
