@@ -27,8 +27,13 @@ trait DebugLoggingTrait {
     }
     $caller = $backtrace[1];
     $class = $caller['class'] ?? 'UnknownClass';
-    $class_name = (new \ReflectionClass($class))->getShortName();
-    $function = $caller['function'] ?? 'unknownFunction';
+    try {
+      $class_name = (new \ReflectionClass($class))->getShortName();
+    }
+    catch (\ReflectionException $e) {
+      return;
+    }
+    $function = $caller['function'] ?: 'unknownFunction';
     $line = $backtrace[0]['line'] ?? 'unknown_line';
 
     $formatted_message = sprintf('%s [DEBUG] [%s::%s (%s)] %s', $this::emojiForString($class), $class_name, $function, $line, $message);
@@ -61,8 +66,7 @@ trait DebugLoggingTrait {
     // between correspond to an emoji. These emojis depict sports, food, and
     // animals.
     $html_entity = floor(129338 + $num * (129431 - 129338));
-    $emoji = mb_convert_encoding("&#$html_entity;", 'UTF-8', 'HTML-ENTITIES');
-    return is_string($emoji) ? $emoji : '';
+    return mb_convert_encoding("&#$html_entity;", 'UTF-8', 'HTML-ENTITIES');
   }
 
 }
