@@ -9,6 +9,7 @@ use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\node\NodeInterface;
 use Drupal\node\Entity\NodeType;
 use Drupal\user\Entity\User;
+use Drupal\proxy_block\Trait\DebugLoggingTrait;
 
 /**
  * Functional tests for the Proxy Block plugin.
@@ -24,6 +25,7 @@ use Drupal\user\Entity\User;
 class ProxyBlockFunctionalTest extends BrowserTestBase {
 
   use BlockCreationTrait;
+  use DebugLoggingTrait;
 
   /**
    * {@inheritdoc}
@@ -159,22 +161,28 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * itself to prevent infinite recursion.
    */
   public function testProxyBlockConfigurationForm(): void {
+    $this->logDebug('Starting testProxyBlockConfigurationForm');
     $this->drupalLogin($this->adminUser);
 
     // Navigate directly to the proxy block configuration form.
+    $this->logDebug('Navigating to proxy block configuration form');
     $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
 
     // Verify form loads and contains target block selection.
+    $this->logDebug('Verifying form elements');
     $this->assertSession()->fieldExists('settings[target_block][id]');
     $this->assertSession()->optionExists('settings[target_block][id]', '');
     $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
     $this->assertSession()->optionExists('settings[target_block][id]', 'page_title_block');
 
     // Verify proxy block itself is not in the options (prevents recursion).
+    $this->logDebug('Verifying proxy_block_proxy is not in options');
     $this->assertSession()->optionNotExists('settings[target_block][id]', 'proxy_block_proxy');
 
     // Verify the form loads successfully.
+    $this->logDebug('Verifying form loads successfully');
     $this->assertSession()->statusCodeEquals(200);
+    $this->logDebug('Finished testProxyBlockConfigurationForm');
   }
 
   /**
@@ -184,7 +192,9 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * and that the configuration persists as expected.
    */
   public function testProxyBlockPlacementAndConfiguration(): void {
+    $this->logDebug('Starting testProxyBlockPlacementAndConfiguration');
     // Place a proxy block using the placeBlock helper method.
+    $this->logDebug('Placing proxy block');
     $block = $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
       'id' => 'test_proxy_placement',
@@ -196,17 +206,21 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Verify the block was created successfully.
+    $this->logDebug('Verifying block was created');
     $this->assertEquals('Test Proxy Placement Block', $block->label());
 
     // Verify the configuration was saved correctly.
+    $this->logDebug('Verifying block configuration');
     $plugin = $block->getPlugin();
     $config = $plugin->getConfiguration();
     $this->assertEquals('system_branding_block', $config['target_block']['id']);
 
     // Navigate to block admin page and verify block appears.
+    $this->logDebug('Verifying block appears on admin page');
     $this->drupalLogin($this->adminUser);
     $this->drupalGet('admin/structure/block');
     $this->assertSession()->statusCodeEquals(200);
+    $this->logDebug('Finished testProxyBlockPlacementAndConfiguration');
   }
 
   /**
@@ -217,7 +231,9 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * the core proxy functionality works as expected.
    */
   public function testProxyBlockRendersTargetBlockContent(): void {
+    $this->logDebug('Starting testProxyBlockRendersTargetBlockContent');
     // Place a proxy block targeting the system branding block.
+    $this->logDebug('Placing proxy block');
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
       'id' => 'proxy_rendering_test',
@@ -229,10 +245,12 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Visit frontend page and verify target block content is rendered.
+    $this->logDebug('Visiting front page');
     $this->drupalGet('<front>');
     $this->assertSession()->statusCodeEquals(200);
 
     // System branding block should render the site name.
+    $this->logDebug('Verifying target block content is rendered');
     $site_name = $this->config('system.site')->get('name');
     if ($site_name) {
       $this->assertSession()->pageTextContains($site_name);
@@ -243,6 +261,7 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     if ($site_slogan) {
       $this->assertSession()->pageTextContains($site_slogan);
     }
+    $this->logDebug('Finished testProxyBlockRendersTargetBlockContent');
   }
 
   /**
@@ -253,7 +272,9 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * blocks function properly when proxied.
    */
   public function testProxyBlockWithContextAwareTargets(): void {
+    $this->logDebug('Starting testProxyBlockWithContextAwareTargets');
     // Place a proxy block targeting the page title block (context-aware).
+    $this->logDebug('Placing proxy block with context-aware target');
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
       'id' => 'context_test_proxy',
@@ -265,14 +286,17 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Visit a node page where context should be available.
+    $this->logDebug('Visiting node page');
     $this->drupalGet('/node/' . $this->testNode->id());
     $this->assertSession()->statusCodeEquals(200);
 
     // Page title block should render the node title when given node context.
+    $this->logDebug('Verifying target block content is rendered with context');
     $this->assertSession()->pageTextContains($this->testNode->getTitle());
 
     // Verify the proxy block successfully passed the node context.
     $this->assertSession()->elementExists('css', 'h1');
+    $this->logDebug('Finished testProxyBlockWithContextAwareTargets');
   }
 
   /**
@@ -283,31 +307,38 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * properly on the frontend after layout is saved.
    */
   public function testLayoutBuilderIntegration(): void {
+    $this->logDebug('Starting testLayoutBuilderIntegration');
     $this->drupalLogin($this->adminUser);
 
     // Navigate to Layout Builder for the page content type.
+    $this->logDebug('Navigating to Layout Builder');
     $this->drupalGet('/admin/structure/types/manage/page/display/default/layout');
     $this->clickLink('Add block');
     $this->clickLink('Proxy Block');
 
     // Configure proxy block in Layout Builder.
+    $this->logDebug('Configuring proxy block in Layout Builder');
     $this->submitForm([
       'settings[label]' => 'Layout Builder Proxy Test',
       'settings[target_block][id]' => 'page_title_block',
     ], 'Add block');
 
     // In Layout Builder admin mode, should show preview text.
+    $this->logDebug('Verifying preview text in Layout Builder');
     $this->assertSession()->pageTextContains('Proxy Block:');
     $this->assertSession()->pageTextContains('Configured to render');
 
     // Save the layout.
+    $this->logDebug('Saving layout');
     $this->submitForm([], 'Save layout');
     $this->assertSession()->pageTextContains('The layout has been saved.');
 
     // Visit frontend node page - proxy should render target block content.
+    $this->logDebug('Visiting node page to verify layout changes');
     $this->drupalGet('/node/' . $this->testNode->id());
     $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextContains($this->testNode->getTitle());
+    $this->logDebug('Finished testLayoutBuilderIntegration');
   }
 
   /**
@@ -318,7 +349,9 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
    * configuration scenarios.
    */
   public function testGracefulErrorHandling(): void {
+    $this->logDebug('Starting testGracefulErrorHandling');
     // Test with completely empty target configuration.
+    $this->logDebug('Testing with empty target configuration');
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
       'id' => 'empty_target_test',
@@ -327,16 +360,19 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Visit page - should handle gracefully without errors.
+    $this->logDebug('Visiting front page to verify graceful handling');
     $this->drupalGet('<front>');
     $this->assertSession()->statusCodeEquals(200);
 
     // Should not display error messages to end users.
+    $this->logDebug('Verifying no error messages are displayed');
     $this->assertSession()->pageTextNotContains('error');
     $this->assertSession()->pageTextNotContains('Error');
     $this->assertSession()->pageTextNotContains('Warning');
     $this->assertSession()->pageTextNotContains('ContextException');
 
     // Test with invalid target plugin ID.
+    $this->logDebug('Testing with invalid target plugin ID');
     $this->placeBlock('proxy_block_proxy', [
       'region' => 'content',
       'id' => 'invalid_target_test',
@@ -348,12 +384,15 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     ]);
 
     // Page should still load successfully despite invalid target.
+    $this->logDebug('Visiting front page to verify graceful handling');
     $this->drupalGet('<front>');
     $this->assertSession()->statusCodeEquals(200);
 
     // Should not expose technical errors to end users.
+    $this->logDebug('Verifying no technical errors are exposed');
     $this->assertSession()->pageTextNotContains('PluginException');
     $this->assertSession()->pageTextNotContains('PluginNotFoundException');
+    $this->logDebug('Finished testGracefulErrorHandling');
   }
 
   /**
@@ -364,5 +403,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $node_type->save();
     return $node_type;
   }
+
 
 }
