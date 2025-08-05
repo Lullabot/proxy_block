@@ -37,8 +37,12 @@ trait DebugLoggingTrait {
     $line = $backtrace[0]['line'] ?? 'unknown_line';
 
     $formatted_message = sprintf('%s [DEBUG] [%s::%s (%s)] %s', $this::emojiForString($class), $class_name, $function, $line, $message);
-    // @phpstan-ignore-next-line
-    HtmlOutputLogger::log($formatted_message);
+
+    // Use HtmlOutputLogger if available (Drupal 11+ with PHPUnit 10).
+    if (class_exists(HtmlOutputLogger::class)) {
+      // @phpstan-ignore-next-line
+      HtmlOutputLogger::log($formatted_message);
+    }
   }
 
   /**
