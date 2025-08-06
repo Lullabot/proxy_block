@@ -17,7 +17,7 @@ env:
   # PHPUnit test configuration
   SIMPLETEST_DB: 'mysql://drupal:drupal@127.0.0.1:3306/drupal'
   SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
-  BROWSERTEST_OUTPUT_DIRECTORY: '/tmp'
+  BROWSERTEST_OUTPUT_DIRECTORY: '/tmp/simpletest_output'
   MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
@@ -161,6 +161,9 @@ jobs:
           php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
           sleep 2
 
+      - name: Create artifact directory
+        run: mkdir -p /tmp/simpletest_output
+
       - name: Run Unit tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: php vendor/bin/phpunit \
@@ -185,7 +188,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: functional-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
-          path: /tmp/
+          path: /tmp/simpletest_output/
           retention-days: 14
           if-no-files-found: ignore
 
@@ -201,7 +204,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
-          path: /tmp/
+          path: /tmp/simpletest_output/
           retention-days: 14
           if-no-files-found: ignore
 
