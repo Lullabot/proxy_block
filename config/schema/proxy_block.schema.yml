@@ -1,0 +1,14 @@
+block.settings.proxy_block_proxy:
+  type: block_settings
+  label: 'Proxy Block settings'
+  mapping:
+    target_block:
+      type: mapping
+      label: 'Target block configuration'
+      mapping:
+        id:
+          type: string
+          label: 'Target block plugin ID'
+        config:
+          type: ignore
+          label: 'Target block settings'

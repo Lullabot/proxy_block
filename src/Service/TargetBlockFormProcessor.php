@@ -57,7 +57,7 @@ class TargetBlockFormProcessor {
       if ($target_block instanceof PluginFormInterface) {
         $config_form = $target_block->buildConfigurationForm([], new FormState());
 
-        // If the config form is empty, show no_config message.
+        // If the config form is empty, show the no_config message.
         if (empty($config_form)) {
           $form_elements['no_config'] = [
             '#type' => 'details',
@@ -163,7 +163,7 @@ class TargetBlockFormProcessor {
           $target_block->setContextMapping($context_mapping);
         }
 
-        // Get final configuration after all modifications.
+        // Get the final configuration after all modifications.
         if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
           $configuration['target_block']['config'] = $target_block->getConfiguration();
         }

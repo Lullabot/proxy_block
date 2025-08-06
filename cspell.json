@@ -22,7 +22,8 @@
     "isset",
     "subform",
     "Subform",
-    "SubformState"
+    "SubformState",
+    "BROWSERTEST"
   ],
   "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
 }
