@@ -174,16 +174,36 @@ jobs:
           ${{ env.MODULE_PATH }}/tests/src/Kernel
 
       - name: Run Functional tests
+        id: functional-tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: php vendor/bin/phpunit \
           --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
           ${{ env.MODULE_PATH }}/tests/src/Functional
 
+      - name: Upload HTML artifacts on Functional test failure
+        if: failure() && steps.functional-tests.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: /tmp/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Run FunctionalJavascript tests
+        id: functional-js-tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: php vendor/bin/phpunit \
           --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
           ${{ env.MODULE_PATH }}/tests/src/FunctionalJavascript
+
+      - name: Upload HTML artifacts on FunctionalJavascript test failure
+        if: failure() && steps.functional-js-tests.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: /tmp/
+          retention-days: 14
+          if-no-files-found: ignore
 
   code-quality:
     name: '🔍 Code Quality (ESLint, Stylelint, CSpell)'
