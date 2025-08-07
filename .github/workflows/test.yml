@@ -137,11 +137,11 @@ jobs:
           # Create the directory specified by BROWSERTEST_OUTPUT_DIRECTORY
           mkdir -p /tmp/simpletest_output
           chmod 777 /tmp/simpletest_output
-          
+
           # Also create the default browser output directory that tests use
           mkdir -p ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
           chmod 777 ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
-          
+
           echo "Created HTML output directories:"
           ls -la /tmp/simpletest_output
           ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
@@ -195,7 +195,7 @@ jobs:
           echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
           echo "Directory contents before test:"
           ls -la /tmp/simpletest_output/ || echo "Directory is empty"
-          
+
           # Check if HtmlOutputLogger extension is working
           php -r "
             \$directory = '/tmp/simpletest_output';
@@ -207,7 +207,7 @@ jobs:
               echo 'tempnam() failed' . PHP_EOL;
             }
           "
-          
+
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/Functional
@@ -220,7 +220,7 @@ jobs:
           echo "=== /tmp/simpletest_output/ ==="
           ls -la /tmp/simpletest_output/ || echo "Directory is empty"
           find /tmp/simpletest_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in /tmp/simpletest_output/"
-          
+
           echo "=== ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ ==="
           ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ || echo "Directory is empty"
           find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
@@ -255,7 +255,7 @@ jobs:
           echo "=== /tmp/simpletest_output/ ==="
           ls -la /tmp/simpletest_output/ || echo "Directory is empty"
           find /tmp/simpletest_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in /tmp/simpletest_output/"
-          
+
           echo "=== ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ ==="
           ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ || echo "Directory is empty"
           find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
