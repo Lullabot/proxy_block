@@ -207,11 +207,27 @@ jobs:
               echo 'tempnam() failed' . PHP_EOL;
             }
           "
+          
+          # Check PHPUnit extensions and HTML output settings
+          echo "Checking PHPUnit configuration:"
+          php vendor/bin/phpunit \
+            --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+            --list-extensions 2>/dev/null | grep -i html || echo "No HTML extension found"
+          
+          echo "Environment variables:"
+          echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
+          echo "BROWSERTEST_OUTPUT_FILE=\${BROWSERTEST_OUTPUT_FILE:-unset}"
+          
+          # Test if HTML output would work by running the core test that's designed to generate HTML
+          echo "Testing HTML output generation with core test:"
+          php vendor/bin/phpunit \
+            --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+            --filter="FunctionalTestDebugHtmlOutputHelperTest::testCreateFunctionalTestDebugHtmlOutput" \
+            web/core/tests/Drupal/FunctionalTests/Test/ || echo "Core HTML test not available"
 
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/Functional
-        continue-on-error: true
 
       - name: Check HTML output after functional tests
         if: always()
@@ -226,7 +242,7 @@ jobs:
           find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on Functional test failure
-        if: failure() && steps.functional-tests.conclusion == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: functional-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
@@ -246,7 +262,6 @@ jobs:
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/FunctionalJavascript
-        continue-on-error: true
 
       - name: Check HTML output after JS tests
         if: always()
@@ -261,7 +276,7 @@ jobs:
           find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on FunctionalJavascript test failure
-        if: failure() && steps.functional-js-tests.conclusion == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
