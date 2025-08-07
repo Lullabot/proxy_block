@@ -132,6 +132,9 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: cp web/core/.deprecation-ignore.txt .
 
+      - name: Create artifact directory for HTML output
+        run: mkdir -p /tmp/simpletest_output
+
       - name: Setup Chrome and ChromeDriver (for functional-javascript tests)
         uses: browser-actions/setup-chrome@latest
 
@@ -160,9 +163,6 @@ jobs:
         run: |
           php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
           sleep 2
-
-      - name: Create artifact directory
-        run: mkdir -p /tmp/simpletest_output
 
       - name: Run Unit tests
         working-directory: ${{ env.DRUPAL_ROOT }}
