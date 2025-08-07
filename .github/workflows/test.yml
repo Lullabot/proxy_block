@@ -207,17 +207,17 @@ jobs:
               echo 'tempnam() failed' . PHP_EOL;
             }
           "
-          
+
           # Check PHPUnit extensions and HTML output settings
           echo "Checking PHPUnit configuration:"
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             --list-extensions 2>/dev/null | grep -i html || echo "No HTML extension found"
-          
+
           echo "Environment variables:"
           echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
           echo "BROWSERTEST_OUTPUT_FILE=\${BROWSERTEST_OUTPUT_FILE:-unset}"
-          
+
           # Test if HTML output would work by running the core test that's designed to generate HTML
           echo "Testing HTML output generation with core test:"
           php vendor/bin/phpunit \
