@@ -248,6 +248,18 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      - name: Upload logs on Functional test failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-logs-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: |
+            ${{ env.DRUPAL_ROOT }}/sites/default/files/
+            ${{ env.DRUPAL_ROOT }}/web/sites/default/files/
+            ${{ env.DRUPAL_ROOT }}/sites/simpletest/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Run FunctionalJavascript tests
         id: functional-js-tests
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -279,6 +291,18 @@ jobs:
           path: |
             /tmp/simpletest_output/
             ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload logs on FunctionalJavascript test failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-js-test-logs-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: |
+            ${{ env.DRUPAL_ROOT }}/sites/default/files/
+            ${{ env.DRUPAL_ROOT }}/web/sites/default/files/
+            ${{ env.DRUPAL_ROOT }}/sites/simpletest/
           retention-days: 14
           if-no-files-found: ignore
 
