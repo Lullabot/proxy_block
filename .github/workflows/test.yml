@@ -17,7 +17,7 @@ env:
   # PHPUnit test configuration
   SIMPLETEST_DB: 'mysql://drupal:drupal@127.0.0.1:3306/drupal'
   SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
-  BROWSERTEST_OUTPUT_DIRECTORY: '/tmp/simpletest_output'
+  BROWSERTEST_OUTPUT_DIRECTORY: 'sites/simpletest/browser_output'
   MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
@@ -218,15 +218,11 @@ jobs:
           echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
           echo "BROWSERTEST_OUTPUT_FILE=\${BROWSERTEST_OUTPUT_FILE:-unset}"
 
-          # Test if HTML output would work by running the core test that's designed to generate HTML
-          echo "Testing HTML output generation with core test:"
+          # Run tests with verbose output to see if HtmlOutputLogger messages appear
+          echo "Running functional tests with verbose output..."
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-            --filter="FunctionalTestDebugHtmlOutputHelperTest::testCreateFunctionalTestDebugHtmlOutput" \
-            web/core/tests/Drupal/FunctionalTests/Test/ || echo "Core HTML test not available"
-
-          php vendor/bin/phpunit \
-            --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
+            --verbose \
             ${{ env.MODULE_PATH }}/tests/src/Functional
 
       - name: Check HTML output after functional tests
