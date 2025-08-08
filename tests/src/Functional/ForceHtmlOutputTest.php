@@ -27,18 +27,18 @@ class ForceHtmlOutputTest extends BrowserTestBase {
    * Force HTML output generation by visiting a page and failing.
    */
   public function testForceHtmlOutput(): void {
-    // Visit a page to generate browser state
+    // Visit a page to generate browser state.
     $this->drupalGet('<front>');
-    
-    // Check page loaded
+
+    // Check page loaded.
     $this->assertSession()->statusCodeEquals(200);
-    
-    // Force HTML output by explicitly calling htmlOutput
+
+    // Force HTML output by explicitly calling htmlOutput.
     if (method_exists($this, 'htmlOutput')) {
       $this->htmlOutput();
     }
-    
-    // Now intentionally fail to trigger artifact upload
+
+    // Now intentionally fail to trigger artifact upload.
     $this->fail('Intentionally failing to test HTML artifact generation in CI');
   }
 
