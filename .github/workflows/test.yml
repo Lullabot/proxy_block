@@ -134,17 +134,13 @@ jobs:
 
       - name: Create artifact directory for HTML output
         run: |
-          # Create the directory specified by BROWSERTEST_OUTPUT_DIRECTORY
-          mkdir -p /tmp/simpletest_output
-          chmod 777 /tmp/simpletest_output
+          # Create the browser output directory where PHPUnit actually writes files
+          # Note: Drupal web root is at drupal-root/web/, not drupal-root/
+          mkdir -p ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
+          chmod 777 ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
 
-          # Also create the default browser output directory that tests use
-          mkdir -p ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
-          chmod 777 ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
-
-          echo "Created HTML output directories:"
-          ls -la /tmp/simpletest_output
-          ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output
+          echo "Created HTML output directory:"
+          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
 
       - name: Setup Chrome and ChromeDriver (for functional-javascript tests)
         uses: browser-actions/setup-chrome@latest
@@ -194,19 +190,7 @@ jobs:
           echo "Starting functional tests with HTML output enabled..."
           echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
           echo "Directory contents before test:"
-          ls -la /tmp/simpletest_output/ || echo "Directory is empty"
-
-          # Check if HtmlOutputLogger extension is working
-          php -r "
-            \$directory = '/tmp/simpletest_output';
-            \$tempFile = tempnam(\$directory, 'browser_output_test_');
-            if (\$tempFile) {
-              echo 'tempnam() works: ' . \$tempFile . PHP_EOL;
-              unlink(\$tempFile);
-            } else {
-              echo 'tempnam() failed' . PHP_EOL;
-            }
-          "
+          ls -la web/sites/simpletest/browser_output/ || echo "Directory is empty"
 
           # Check PHPUnit extensions and HTML output settings
           echo "Checking PHPUnit configuration:"
@@ -229,13 +213,9 @@ jobs:
         if: always()
         run: |
           echo "Directory contents after functional tests:"
-          echo "=== /tmp/simpletest_output/ ==="
-          ls -la /tmp/simpletest_output/ || echo "Directory is empty"
-          find /tmp/simpletest_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in /tmp/simpletest_output/"
-
-          echo "=== ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ ==="
-          ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ || echo "Directory is empty"
-          find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
+          echo "=== ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ ==="
+          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ || echo "Directory is empty"
+          find ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in web/sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on Functional test failure
         if: failure()
@@ -243,8 +223,7 @@ jobs:
         with:
           name: functional-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
-            /tmp/simpletest_output/
-            ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/
+            ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
           retention-days: 14
           if-no-files-found: ignore
 
@@ -266,7 +245,7 @@ jobs:
         run: |
           echo "Starting FunctionalJavascript tests with HTML output enabled..."
           echo "Directory contents before JS tests:"
-          ls -la /tmp/simpletest_output/ || echo "Directory is empty"
+          ls -la web/sites/simpletest/browser_output/ || echo "Directory is empty"
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/FunctionalJavascript
@@ -275,13 +254,9 @@ jobs:
         if: always()
         run: |
           echo "Directory contents after JS tests:"
-          echo "=== /tmp/simpletest_output/ ==="
-          ls -la /tmp/simpletest_output/ || echo "Directory is empty"
-          find /tmp/simpletest_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in /tmp/simpletest_output/"
-
-          echo "=== ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ ==="
-          ls -la ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ || echo "Directory is empty"
-          find ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in sites/simpletest/browser_output/"
+          echo "=== ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ ==="
+          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ || echo "Directory is empty"
+          find ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in web/sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on FunctionalJavascript test failure
         if: failure()
@@ -289,8 +264,7 @@ jobs:
         with:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
-            /tmp/simpletest_output/
-            ${{ env.DRUPAL_ROOT }}/sites/simpletest/browser_output/
+            ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
           retention-days: 14
           if-no-files-found: ignore
 
