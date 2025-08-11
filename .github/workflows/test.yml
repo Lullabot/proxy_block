@@ -206,7 +206,7 @@ jobs:
           echo "Running functional tests with verbose output..."
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-            --verbose \
+            --debug \
             ${{ env.MODULE_PATH }}/tests/src/Functional
 
       - name: Check HTML output after functional tests
