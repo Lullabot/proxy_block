@@ -196,17 +196,16 @@ jobs:
           echo "Checking PHPUnit configuration:"
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-            --list-extensions 2>/dev/null | grep -i html || echo "No HTML extension found"
+            --list-extensions
 
           echo "Environment variables:"
           echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
-          echo "BROWSERTEST_OUTPUT_FILE=\${BROWSERTEST_OUTPUT_FILE:-unset}"
+          echo "BROWSERTEST_OUTPUT_FILE=${BROWSERTEST_OUTPUT_FILE:-unset}"
 
           # Run tests with verbose output to see if HtmlOutputLogger messages appear
           echo "Running functional tests with verbose output..."
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-            --debug \
             ${{ env.MODULE_PATH }}/tests/src/Functional
 
       - name: Check HTML output after functional tests
