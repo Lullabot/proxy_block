@@ -133,7 +133,7 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     // Use the EntityDisplayRepository service to ensure displays exist.
     $display_repository = \Drupal::service('entity_display.repository');
     $entity_display = $display_repository->getViewDisplay('node', $type, 'default');
-    
+
     // Enable Layout Builder programmatically for better reliability in CI.
     $entity_display->enableLayoutBuilder()
       ->setOverridable()
@@ -314,7 +314,8 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Starting testLayoutBuilderIntegration');
     $this->drupalLogin($this->adminUser);
 
-    // First, verify that Layout Builder is properly enabled for the content type.
+    // First, verify that Layout Builder is properly enabled for the content
+    // type.
     $entity_display = \Drupal::entityTypeManager()
       ->getStorage('entity_view_display')
       ->load('node.page.default');
@@ -333,7 +334,8 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Checking block library');
     $this->drupalGet('/layout_builder/choose/block/defaults/node.page.default/0/content');
 
-    // Check if Layout Builder block selection is working - if not, skip the detailed checks.
+    // Check if Layout Builder block selection is working - if not, skip the
+    // detailed checks.
     $status_code = $this->getSession()->getStatusCode();
     if ($status_code !== 200) {
       $this->markTestSkipped('Layout Builder block selection page not accessible (status: ' . $status_code . '). This may indicate a CI environment issue.');
