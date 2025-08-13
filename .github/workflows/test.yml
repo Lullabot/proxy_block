@@ -187,34 +187,9 @@ jobs:
         id: functional-tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          echo "Starting functional tests with HTML output enabled..."
-          echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
-          echo "Directory contents before test:"
-          ls -la web/sites/simpletest/browser_output/ || echo "Directory is empty"
-
-          # Check PHPUnit extensions and HTML output settings
-          echo "Checking PHPUnit configuration:"
-          php vendor/bin/phpunit \
-            --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
-            --list-extensions
-
-          echo "Environment variables:"
-          echo "BROWSERTEST_OUTPUT_DIRECTORY=$BROWSERTEST_OUTPUT_DIRECTORY"
-          echo "BROWSERTEST_OUTPUT_FILE=${BROWSERTEST_OUTPUT_FILE:-unset}"
-
-          # Run tests with verbose output to see if HtmlOutputLogger messages appear
-          echo "Running functional tests with verbose output..."
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/Functional
-
-      - name: Check HTML output after functional tests
-        if: always()
-        run: |
-          echo "Directory contents after functional tests:"
-          echo "=== ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ ==="
-          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ || echo "Directory is empty"
-          find ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in web/sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on Functional test failure
         if: failure()
@@ -226,36 +201,13 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload logs on Functional test failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: functional-test-logs-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
-          path: |
-            ${{ env.DRUPAL_ROOT }}/sites/default/files/
-            ${{ env.DRUPAL_ROOT }}/web/sites/default/files/
-            ${{ env.DRUPAL_ROOT }}/sites/simpletest/
-          retention-days: 14
-          if-no-files-found: ignore
-
       - name: Run FunctionalJavascript tests
         id: functional-js-tests
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          echo "Starting FunctionalJavascript tests with HTML output enabled..."
-          echo "Directory contents before JS tests:"
-          ls -la web/sites/simpletest/browser_output/ || echo "Directory is empty"
           php vendor/bin/phpunit \
             --configuration ${{ github.workspace }}/${{ env.DRUPAL_ROOT }}/web/core/phpunit.xml.dist \
             ${{ env.MODULE_PATH }}/tests/src/FunctionalJavascript
-
-      - name: Check HTML output after JS tests
-        if: always()
-        run: |
-          echo "Directory contents after JS tests:"
-          echo "=== ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ ==="
-          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ || echo "Directory is empty"
-          find ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/ -name "*.html" -type f | head -10 || echo "No HTML files found in web/sites/simpletest/browser_output/"
 
       - name: Upload HTML artifacts on FunctionalJavascript test failure
         if: failure()
@@ -264,18 +216,6 @@ jobs:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
             ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Upload logs on FunctionalJavascript test failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: functional-js-test-logs-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
-          path: |
-            ${{ env.DRUPAL_ROOT }}/sites/default/files/
-            ${{ env.DRUPAL_ROOT }}/web/sites/default/files/
-            ${{ env.DRUPAL_ROOT }}/sites/simpletest/
           retention-days: 14
           if-no-files-found: ignore
 
