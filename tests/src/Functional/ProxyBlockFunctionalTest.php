@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\proxy_block\Functional;
 
+use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
 use Drupal\Tests\BrowserTestBase;
 use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\node\NodeInterface;
@@ -135,7 +136,7 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $entity_display = $display_repository->getViewDisplay('node', $type, 'default');
 
     // Enable Layout Builder programmatically for better reliability in CI.
-    if ($entity_display instanceof \Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay) {
+    if ($entity_display instanceof LayoutBuilderEntityViewDisplay) {
       $entity_display->enableLayoutBuilder()
         ->setOverridable()
         ->save();
