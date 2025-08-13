@@ -135,9 +135,11 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $entity_display = $display_repository->getViewDisplay('node', $type, 'default');
 
     // Enable Layout Builder programmatically for better reliability in CI.
-    $entity_display->enableLayoutBuilder()
-      ->setOverridable()
-      ->save();
+    if ($entity_display instanceof \Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay) {
+      $entity_display->enableLayoutBuilder()
+        ->setOverridable()
+        ->save();
+    }
   }
 
   /**
@@ -339,17 +341,17 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $status_code = $this->getSession()->getStatusCode();
     if ($status_code !== 200) {
       $this->markTestSkipped('Layout Builder block selection page not accessible (status: ' . $status_code . '). This may indicate a CI environment issue.');
-      return;
     }
-
-    // Look for our proxy block in the available blocks
-    // In CI, we just verify the block shows up in some form.
-    $page_content = $this->getSession()->getPage()->getContent();
-    $this->assertTrue(
-      strpos($page_content, 'Proxy Block') !== FALSE ||
-      strpos($page_content, 'proxy_block_proxy') !== FALSE,
-      'Proxy Block should be available in Layout Builder block selection'
-    );
+    else {
+      // Look for our proxy block in the available blocks
+      // In CI, we just verify the block shows up in some form.
+      $page_content = $this->getSession()->getPage()->getContent();
+      $this->assertTrue(
+        strpos($page_content, 'Proxy Block') !== FALSE ||
+        strpos($page_content, 'proxy_block_proxy') !== FALSE,
+        'Proxy Block should be available in Layout Builder block selection'
+      );
+    }
 
     $this->logDebug('Finished testLayoutBuilderIntegration');
   }
