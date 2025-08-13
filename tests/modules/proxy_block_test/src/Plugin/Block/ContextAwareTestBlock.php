@@ -98,7 +98,6 @@ final class ContextAwareTestBlock extends BlockBase implements ContextAwarePlugi
 
     // Add node information if available and enabled.
     if ($config['show_node_info'] && $this->getContextValue('node')) {
-      /** @var \Drupal\node\NodeInterface $node */
       $node = $this->getContextValue('node');
       if ($node instanceof NodeInterface) {
         $items[] = $this->t('Node: @title (ID: @id)', [
@@ -110,7 +109,6 @@ final class ContextAwareTestBlock extends BlockBase implements ContextAwarePlugi
 
     // Add user information if available and enabled.
     if ($config['show_user_info'] && $this->getContextValue('user')) {
-      /** @var \Drupal\user\UserInterface $user */
       $user = $this->getContextValue('user');
       if ($user instanceof UserInterface) {
         $items[] = $this->t('User: @name (ID: @id)', [
