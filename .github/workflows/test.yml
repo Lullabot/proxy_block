@@ -17,7 +17,7 @@ env:
   # PHPUnit test configuration
   SIMPLETEST_DB: 'mysql://drupal:drupal@127.0.0.1:3306/drupal'
   SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
-  BROWSERTEST_OUTPUT_DIRECTORY: 'sites/simpletest/browser_output'
+  BROWSERTEST_OUTPUT_DIRECTORY: 'web/sites/simpletest/browser_output'
   MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu","--headless","--no-sandbox","--disable-dev-shm-usage"]}}, "http://127.0.0.1:9515"]'
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
@@ -134,13 +134,8 @@ jobs:
 
       - name: Create artifact directory for HTML output
         run: |
-          # Create the browser output directory where PHPUnit actually writes files
-          # Note: Drupal web root is at drupal-root/web/, not drupal-root/
           mkdir -p ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
           chmod 777 ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
-
-          echo "Created HTML output directory:"
-          ls -la ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output
 
       - name: Setup Chrome and ChromeDriver (for functional-javascript tests)
         uses: browser-actions/setup-chrome@latest
