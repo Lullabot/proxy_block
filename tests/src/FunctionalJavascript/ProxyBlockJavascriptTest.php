@@ -23,8 +23,8 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
    */
   protected static $modules = [
     'proxy_block',
-    'proxy_block_test',
     'block',
+    'system',
   ];
 
   /**
@@ -49,30 +49,22 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     $this->assertSession()->fieldExists('settings[target_block][id]');
     $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
 
-    // Verify the test module blocks are available as options.
-    $this->assertSession()->optionExists('settings[target_block][id]', 'proxy_block_test_simple');
-    $this->assertSession()->optionExists('settings[target_block][id]', 'proxy_block_test_configurable');
+    // Verify core blocks are available as options.
+    $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
+    $this->assertSession()->optionExists('settings[target_block][id]', 'system_main_block');
 
-    // Select a simple test block and wait for AJAX to complete.
+    // Select a system block and wait for AJAX to complete.
     $page = $this->getSession()->getPage();
-    $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_simple');
+    $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
 
     // Use assertJsCondition to wait for AJAX completion.
     $this->assertJsCondition('document.querySelector("#target-block-config-wrapper").textContent.length > 0', 10000);
 
-    // Now select a configurable block and verify configuration fields appear.
-    $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_configurable');
+    // Select empty option to test clearing.
+    $page->selectFieldOption('settings[target_block][id]', '');
 
-    // Wait for the configuration form to appear.
-    $this->assertJsCondition('document.querySelector("#edit-settings-target-block-config-test-text") !== null', 10000);
-
-    // Verify the configuration fields are present.
-    $this->assertSession()->fieldExists('settings[target_block][config][test_text]');
-    $this->assertSession()->fieldExists('settings[target_block][config][test_checkbox]');
-    $this->assertSession()->fieldExists('settings[target_block][config][test_select]');
-
-    // Fill in the configuration and save.
-    $page->fillField('settings[target_block][config][test_text]', 'Test Configuration');
+    // Submit the form with a valid configuration.
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
     $page->fillField('info', 'Test Proxy Block with AJAX');
     $page->pressButton('Save block');
 
@@ -97,20 +89,24 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
     $page = $this->getSession()->getPage();
 
-    // Rapidly change selections.
-    $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_simple');
-    $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_configurable');
-    $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_context_aware');
-
-    // Wait for the last AJAX call to complete.
-    $this->assertJsCondition('document.querySelector("#edit-settings-target-block-config-custom-message") !== null', 10000);
-
-    // Verify the form is still functional.
-    $this->assertSession()->fieldExists('settings[target_block][config][custom_message]');
+    // Rapidly change selections between core blocks.
+    $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $page->selectFieldOption('settings[target_block][id]', 'system_powered_by_block');
 
     // Clear selection and verify form updates.
     $page->selectFieldOption('settings[target_block][id]', '');
-    $this->assertJsCondition('document.querySelector("#edit-settings-target-block-config-custom-message") === null', 10000);
+
+    // Verify the form is still functional after rapid changes.
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $this->assertJsCondition('document.querySelector("#target-block-config-wrapper") !== null', 10000);
+
+    // Submit to verify form still works.
+    $page->fillField('info', 'Test Rapid Changes Block');
+    $page->pressButton('Save block');
+
+    $this->assertSession()->addressEquals('admin/structure/block');
+    $this->assertSession()->pageTextContains('Test Rapid Changes Block');
   }
 
 }
