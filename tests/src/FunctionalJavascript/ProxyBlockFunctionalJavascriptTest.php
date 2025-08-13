@@ -231,7 +231,8 @@ class ProxyBlockFunctionalJavascriptTest extends WebDriverTestBase {
     $assert_session->fieldExists('settings[target_block][config][show_user_info]');
     $assert_session->fieldExists('settings[target_block][config][custom_message]');
 
-    // Verify context mapping section exists (this depends on the actual implementation
+    // Verify context mapping section exists (this depends on the actual
+    // implementation
     // but we can check for context-related form elements).
     $context_elements = $page->findAll('css', '[id*="context"]');
     $this->assertNotEmpty($context_elements, 'Context mapping elements should be present');
@@ -316,9 +317,11 @@ class ProxyBlockFunctionalJavascriptTest extends WebDriverTestBase {
     // Verify configuration form disappears.
     $config_wrapper = $page->find('css', '#target-block-config-wrapper');
     $assert_session->waitForElementRemoved('css', '#edit-settings-target-block-config-custom-message', 10);
-    $this->assertEmpty($config_wrapper->getText(), 'Configuration should be cleared when no target selected');
+    $this->assertEmpty($config_wrapper->getText(),
+      'Configuration should be cleared when no target selected');
 
-    // Test restricted block (should appear in dropdown but may have access restrictions).
+    // Test restricted block (should appear in dropdown but may have access
+    // restrictions).
     $page->selectFieldOption('settings[target_block][id]', 'proxy_block_test_restricted');
     $assert_session->waitForElement('css', '#target-block-config-wrapper', 10);
 
@@ -347,9 +350,11 @@ class ProxyBlockFunctionalJavascriptTest extends WebDriverTestBase {
     // but we can at least verify the end result.
     $assert_session->waitForElement('css', '#edit-settings-target-block-config-test-text', 10);
 
-    // Verify the fade effect wrapper exists (this is set in the AJAX configuration).
+    // Verify the fade effect wrapper exists (this is set in the AJAX
+    // configuration).
     $config_wrapper = $page->find('css', '#target-block-config-wrapper');
-    $this->assertNotNull($config_wrapper, 'Configuration wrapper with fade effect should exist');
+    $this->assertNotNull($config_wrapper,
+      'Configuration wrapper with fade effect should exist');
   }
 
 }
