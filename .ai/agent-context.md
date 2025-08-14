@@ -43,52 +43,47 @@ vendor/bin/drush cr
 
 ### Testing Commands
 
-#### Recommended: Local Development Testing (Fast & Reliable)
+#### Recommended: DDEV Testing Commands
 
 ```bash
-# Unit tests (recommended for development) - uses optimized local config
-./scripts/test-local.sh unit
-./scripts/test-local.sh module proxy_block
-
-# Specific module unit tests with testdox output
-./scripts/test-local.sh unit web/modules/contrib/proxy_block/tests/src/Unit/ --testdox
-
-# Direct PHPUnit with local config - same test suites as Drupal core
-ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=unit --testdox'
-ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=unit-component --testdox'
-```
-
-#### Standard Commands (May Hang on Kernel/Functional Tests)
-
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev exec vendor/bin/phpunit
+# Run all tests for the proxy_block module
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
 
 # Run specific test groups
-ddev exec vendor/bin/phpunit --group proxy_block
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --group proxy_block
 
-# Run tests for this module specifically
-ddev exec vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
+# Run specific test types
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
 
-# Alternative: Standard commands (when not using DDEV)
-# Run all tests (from Drupal root)
-vendor/bin/phpunit
-
-# Run specific test groups
-vendor/bin/phpunit --group proxy_block
-
-# Run tests for this module specifically
-vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
+# Run with testdox output for readable results
+ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --testdox web/modules/contrib/proxy_block/tests
 ```
 
-#### Kernel/Functional Tests (Use with Caution in DDEV)
+#### Alternative: Standard Commands (Non-DDEV)
 
 ```bash
-# Kernel tests with timeout (may hang due to process isolation issues)
-./scripts/test-local.sh kernel --timeout 60
+# Run all tests (from Drupal root directory)
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
 
-# For reliable kernel/functional testing, use CI or non-Docker environment
+# Run specific test groups
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --group proxy_block
+
+# Run specific test types
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
 ```
+
+#### Important Testing Notes
+
+- All tests include `--debug` flag for better error reporting
+- Use the Drupal core PHPUnit configuration (`web/core/phpunit.xml.dist`)
+- FunctionalJavascript tests require proper browser driver setup
+- Tests are designed to be stable and reliable in CI environments
 
 ### PHP Code Quality
 
@@ -287,6 +282,16 @@ ddev composer run-script release
 
 # Alternative: Standard commands (when not using DDEV)
 composer run-script release
+```
+
+### PHPStan Static Analysis
+
+```bash
+# DDEV commands (when using DDEV local environment)
+ddev php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
+
+# Alternative: Standard commands (when not using DDEV)
+php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
 ```
 
 ### Additional Development Tools
