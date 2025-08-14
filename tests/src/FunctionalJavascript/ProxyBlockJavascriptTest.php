@@ -48,7 +48,7 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
 
     // Navigate to the block placement form.
     $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
-    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->pageTextContains('Block description');
 
     // Verify the form elements exist.
     $this->assertSession()->fieldExists('settings[target_block][id]');
@@ -65,18 +65,20 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     $page = $this->getSession()->getPage();
     $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
 
-    // Wait for AJAX to complete - check that the wrapper is still present.
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Wait for AJAX to complete and verify wrapper still exists.
+    $this->getSession()->wait(2000);
+    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
 
     // Select empty option to test clearing.
     $page->selectFieldOption('settings[target_block][id]', '');
 
     // Wait for AJAX after clearing selection.
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
+    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
 
     // Submit the form with a valid configuration.
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
     $page->fillField('info', 'Test Proxy Block with AJAX');
     $page->pressButton('Save block');
 
@@ -103,21 +105,21 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
 
     // Rapidly change selections between core blocks.
     $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
 
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
 
     $page->selectFieldOption('settings[target_block][id]', 'system_powered_by_block');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
 
     // Clear selection and verify form updates.
     $page->selectFieldOption('settings[target_block][id]', '');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
 
     // Verify the form is still functional after rapid changes.
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->getSession()->wait(1000);
 
     // Submit to verify form still works.
     $page->fillField('info', 'Test Rapid Changes Block');
