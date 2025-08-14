@@ -161,7 +161,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         '#options' => ['' => $this->t('- Do not render any block -')] + $block_options,
         '#default_value' => $config['target_block']['id'] ?? '',
         '#ajax' => [
-          'callback' => [$this, 'targetBlockAjaxCallback'],
+          'callback' => '::targetBlockAjaxCallback',
           'wrapper' => $wrapper_id,
           'effect' => 'fade',
         ],
@@ -188,13 +188,9 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function targetBlockAjaxCallback(array &$form, FormStateInterface $form_state): array {
     $triggering_element = $form_state->getTriggeringElement();
-    return NestedArray::getValue(
-      $form,
-      [
-        ...array_slice($triggering_element['#array_parents'], 0, -1),
-        'config',
-      ],
-    );
+    $parents = array_slice($triggering_element['#array_parents'], 0, -1);
+    $parents[] = 'config';
+    return NestedArray::getValue($form, $parents);
   }
 
   /**
