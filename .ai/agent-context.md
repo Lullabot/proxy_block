@@ -43,6 +43,22 @@ vendor/bin/drush cr
 
 ### Testing Commands
 
+#### Recommended: Local Development Testing (Fast & Reliable)
+
+```bash
+# Fast unit tests (recommended for development) - uses optimized local config
+./scripts/test-local.sh fast
+./scripts/test-local.sh module proxy_block
+
+# Specific module unit tests with testdox output
+./scripts/test-local.sh unit web/modules/contrib/proxy_block/tests/src/Unit/ --testdox
+
+# Direct PHPUnit with local config
+ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=fast --testdox'
+```
+
+#### Standard Commands (May Hang on Kernel/Functional Tests)
+
 ```bash
 # DDEV commands (when using DDEV local environment)
 ddev exec vendor/bin/phpunit
@@ -62,6 +78,15 @@ vendor/bin/phpunit --group proxy_block
 
 # Run tests for this module specifically
 vendor/bin/phpunit web/modules/contrib/proxy_block/tests/
+```
+
+#### Kernel/Functional Tests (Use with Caution in DDEV)
+
+```bash
+# Kernel tests with timeout (may hang due to process isolation issues)
+./scripts/test-local.sh kernel --timeout 60
+
+# For reliable kernel/functional testing, use CI or non-Docker environment
 ```
 
 ### PHP Code Quality
