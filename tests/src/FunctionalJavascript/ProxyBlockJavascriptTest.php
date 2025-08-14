@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Drupal\Tests\proxy_block\FunctionalJavascript;
 
 use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
-use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests JavaScript functionality for the Proxy Block module.
+ *
+ * @group proxy_block
  */
-#[Group('proxy_block')]
 class ProxyBlockJavascriptTest extends WebDriverTestBase {
 
   /**
