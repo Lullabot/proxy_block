@@ -25,13 +25,16 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     'proxy_block',
     'block',
     'system',
+    'user',
+    'node',
+    'field',
   ];
 
   /**
-   * Tests basic proxy block form access.
+   * Tests proxy block AJAX form functionality.
    *
-   * Verifies that the proxy block configuration form is accessible
-   * and contains the expected form elements.
+   * Verifies that the AJAX-powered target block selection updates the
+   * configuration form dynamically without page reload.
    */
   public function testProxyBlockAjaxFormUpdate(): void {
     // Create and login admin user.
@@ -41,26 +44,113 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     ]);
     $this->drupalLogin($admin_user);
 
-    // Navigate to block administration page.
-    $this->drupalGet('admin/structure/block');
+    // Navigate to the proxy block placement form.
+    $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
     $this->assertSession()->statusCodeEquals(200);
-    $this->assertSession()->pageTextContains('Block layout');
+
+    // Verify the form elements exist.
+    $this->assertSession()->fieldExists('settings[target_block][id]');
+    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
+
+    // Verify core blocks are available as options.
+    $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
+    $this->assertSession()->optionExists('settings[target_block][id]', 'system_main_block');
+
+    // Test AJAX functionality by selecting a target block.
+    $page = $this->getSession()->getPage();
+    $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
+
+    // Wait for AJAX to complete and verify the wrapper still exists.
+    $this->getSession()->wait(2000);
+    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
+
+    // Test form submission with valid configuration.
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $this->getSession()->wait(1000);
+    $page->fillField('info', 'Test Proxy Block with AJAX');
+    $page->pressButton('Save block');
+
+    // Verify successful block creation.
+    $this->assertSession()->addressEquals('admin/structure/block');
+    $this->assertSession()->pageTextContains('Test Proxy Block with AJAX');
   }
 
   /**
-   * Tests proxy block module functionality.
+   * Tests rapid AJAX interactions don't cause issues.
    *
-   * Verifies the proxy_block module is working properly in a
-   * JavaScript test environment.
+   * Verifies that rapidly changing target block selections doesn't
+   * break the form or cause JavaScript errors.
    */
   public function testRapidAjaxInteractions(): void {
-    // Test that the module is loaded and functional.
-    $modules = \Drupal::moduleHandler()->getModuleList();
-    $this->assertArrayHasKey('proxy_block', $modules);
+    $admin_user = $this->drupalCreateUser([
+      'administer blocks',
+      'access administration pages',
+    ]);
+    $this->drupalLogin($admin_user);
 
-    // Test basic page functionality.
-    $this->drupalGet('<front>');
-    $this->assertSession()->statusCodeEquals(200);
+    $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
+    $page = $this->getSession()->getPage();
+
+    // Rapidly change selections between different core blocks.
+    $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
+    $this->getSession()->wait(1000);
+
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $this->getSession()->wait(1000);
+
+    $page->selectFieldOption('settings[target_block][id]', 'system_powered_by_block');
+    $this->getSession()->wait(1000);
+
+    // Clear selection and verify form still works.
+    $page->selectFieldOption('settings[target_block][id]', '');
+    $this->getSession()->wait(1000);
+    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
+
+    // Final selection and form submission to verify stability.
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $this->getSession()->wait(1000);
+    $page->fillField('info', 'Test Rapid Changes Block');
+    $page->pressButton('Save block');
+
+    $this->assertSession()->addressEquals('admin/structure/block');
+    $this->assertSession()->pageTextContains('Test Rapid Changes Block');
+  }
+
+  /**
+   * Tests proxy block form validation and error handling.
+   *
+   * Verifies that the form properly handles validation errors and
+   * provides appropriate feedback through AJAX.
+   */
+  public function testProxyBlockFormValidation(): void {
+    $admin_user = $this->drupalCreateUser([
+      'administer blocks',
+      'access administration pages',
+    ]);
+    $this->drupalLogin($admin_user);
+
+    $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
+    $page = $this->getSession()->getPage();
+
+    // Test form validation - try to submit without required fields.
+    $page->pressButton('Save block');
+    $this->assertSession()->pageTextContains('required');
+
+    // Fill in block description but no target block.
+    $page->fillField('info', 'Test Validation Block');
+    $page->pressButton('Save block');
+
+    // Should still have validation errors for missing target block.
+    $this->assertSession()->pageTextContains('required');
+
+    // Now properly configure the block.
+    $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
+    $this->getSession()->wait(1000);
+    $page->pressButton('Save block');
+
+    // Should succeed this time.
+    $this->assertSession()->addressEquals('admin/structure/block');
+    $this->assertSession()->pageTextContains('Test Validation Block');
   }
 
 }
