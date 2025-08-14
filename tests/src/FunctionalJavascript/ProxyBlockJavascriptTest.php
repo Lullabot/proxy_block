@@ -66,17 +66,17 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
 
     // Wait for AJAX to complete - check that the wrapper is still present.
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 10000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     // Select empty option to test clearing.
     $page->selectFieldOption('settings[target_block][id]', '');
 
     // Wait for AJAX after clearing selection.
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 10000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     // Submit the form with a valid configuration.
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
     $page->fillField('info', 'Test Proxy Block with AJAX');
     $page->pressButton('Save block');
 
@@ -103,21 +103,21 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
 
     // Rapidly change selections between core blocks.
     $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     $page->selectFieldOption('settings[target_block][id]', 'system_powered_by_block');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     // Clear selection and verify form updates.
     $page->selectFieldOption('settings[target_block][id]', '');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     // Verify the form is still functional after rapid changes.
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
-    $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
+    $this->assertSession()->assertWaitOnAjaxRequest();
 
     // Submit to verify form still works.
     $page->fillField('info', 'Test Rapid Changes Block');
