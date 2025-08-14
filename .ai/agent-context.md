@@ -285,3 +285,5 @@ composer run-script release
 - No privilege escalation - proxy block access ≠ target block access
 - All user input validated through Drupal Form API
 - Security events logged for audit trails
+
+- **ALWAYS** remember to lint the code base before pushing code.
