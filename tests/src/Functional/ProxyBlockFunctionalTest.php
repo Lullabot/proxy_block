@@ -411,7 +411,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Finished testGracefulErrorHandling');
   }
 
-
   /**
    * Helper method to create a content type.
    */
