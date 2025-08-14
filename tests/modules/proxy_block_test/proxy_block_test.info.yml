@@ -1,0 +1,7 @@
+name: Proxy Block Test
+type: module
+description: 'Test module for Proxy Block functional javascript tests'
+core_version_requirement: ^10 || ^11
+package: Testing
+dependencies:
+  - drupal:proxy_block

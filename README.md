@@ -266,17 +266,4 @@ individually through the standard Drupal block configuration interface.
 
 ## Contributing
 
-This module follows Drupal coding standards and modern PHP practices. When
-contributing:
-
-- Use final classes where possible
-- Implement constructor promotion
-- Favor functional programming patterns
-- Use polymorphism over conditional logic
-- Include comprehensive error handling
-- Write tests for all new functionality
-
-## Support
-
-For issues, feature requests, or contributions, please use the project's issue queue
-on Drupal.org.
+This module is not open to public contributions.

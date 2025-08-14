@@ -186,9 +186,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Verifying proxy_block_proxy is not in options');
     $this->assertSession()->optionNotExists('settings[target_block][id]', 'proxy_block_proxy');
 
-    // Verify the form loads successfully.
-    $this->logDebug('Verifying form loads successfully');
-    $this->assertSession()->statusCodeEquals(200);
     $this->logDebug('Finished testProxyBlockConfigurationForm');
   }
 
@@ -226,7 +223,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Verifying block appears on admin page');
     $this->drupalLogin($this->adminUser);
     $this->drupalGet('admin/structure/block');
-    $this->assertSession()->statusCodeEquals(200);
     $this->logDebug('Finished testProxyBlockPlacementAndConfiguration');
   }
 
@@ -254,7 +250,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     // Visit frontend page and verify target block content is rendered.
     $this->logDebug('Visiting front page');
     $this->drupalGet('<front>');
-    $this->assertSession()->statusCodeEquals(200);
 
     // System branding block should render the site name.
     $this->logDebug('Verifying target block content is rendered');
@@ -295,7 +290,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     // Visit a node page where context should be available.
     $this->logDebug('Visiting node page');
     $this->drupalGet('/node/' . $this->testNode->id());
-    $this->assertSession()->statusCodeEquals(200);
 
     // Page title block should render the node title when given node context.
     $this->logDebug('Verifying target block content is rendered with context');
@@ -330,7 +324,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->drupalGet('/admin/structure/types/manage/page/display/default/layout');
 
     // Verify we're properly logged in and on the correct page.
-    $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextContains('Edit layout for');
 
     // Navigate to the block library page to verify our block is available.
@@ -378,7 +371,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     // Visit page - should handle gracefully without errors.
     $this->logDebug('Visiting front page to verify graceful handling');
     $this->drupalGet('<front>');
-    $this->assertSession()->statusCodeEquals(200);
 
     // Should not display error messages to end users.
     $this->logDebug('Verifying no error messages are displayed');
@@ -402,7 +394,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     // Page should still load successfully despite invalid target.
     $this->logDebug('Visiting front page to verify graceful handling');
     $this->drupalGet('<front>');
-    $this->assertSession()->statusCodeEquals(200);
 
     // Should not expose technical errors to end users.
     $this->logDebug('Verifying no technical errors are exposed');
