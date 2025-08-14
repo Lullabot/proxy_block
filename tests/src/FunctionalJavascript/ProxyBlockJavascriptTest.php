@@ -135,7 +135,7 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
         $this->assertSession()->pageTextContains('Test JS Form Validation');
       }
       else {
-        // If no validation (form might be simplified), just test basic\n        // submission.
+        // If no validation, just test basic submission.
         $page->fillField('info', 'Test JS Form Validation');
         $page->pressButton('Save block');
         $this->assertSession()->statusCodeEquals(200);
