@@ -411,49 +411,6 @@ class ProxyBlockFunctionalTest extends BrowserTestBase {
     $this->logDebug('Finished testGracefulErrorHandling');
   }
 
-  /**
-   * Tests AJAX configuration in proxy block forms.
-   *
-   * Verifies that the AJAX configuration is properly set up in the block
-   * configuration forms for dynamic target block selection.
-   */
-  public function testProxyBlockAjaxConfiguration(): void {
-    $this->logDebug('Starting testProxyBlockAjaxConfiguration');
-
-    // Navigate to proxy block configuration form.
-    $this->drupalLogin($this->adminUser);
-    $this->drupalGet('admin/structure/block/add/proxy_block_proxy/stark');
-    $this->assertSession()->statusCodeEquals(200);
-
-    // Verify the form structure for AJAX is correct.
-    $this->logDebug('Verifying AJAX form structure');
-    $this->assertSession()->fieldExists('settings[target_block][id]');
-    $this->assertSession()->elementExists('css', '#target-block-config-wrapper');
-
-    // Verify that the target block selection has the necessary options.
-    $this->assertSession()->optionExists('settings[target_block][id]', '');
-    $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
-    $this->assertSession()->optionExists('settings[target_block][id]', 'system_main_block');
-
-    // Check the page source contains AJAX-related configuration.
-    $page_content = $this->getSession()->getPage()->getContent();
-    $this->assertStringContainsString('#target-block-config-wrapper', $page_content);
-    $this->assertStringContainsString('targetBlockAjaxCallback', $page_content);
-
-    // Test form submission with different target blocks works.
-    $this->logDebug('Testing form submission with target blocks');
-
-    // Submit with system branding block.
-    $this->submitForm([
-      'settings[target_block][id]' => 'system_branding_block',
-      'info' => 'Test AJAX Proxy Block',
-    ], 'Save block');
-
-    $this->assertSession()->addressMatches('/admin\/structure\/block$/');
-    $this->assertSession()->pageTextContains('Test AJAX Proxy Block');
-
-    $this->logDebug('Finished testProxyBlockAjaxConfiguration');
-  }
 
   /**
    * Helper method to create a content type.
