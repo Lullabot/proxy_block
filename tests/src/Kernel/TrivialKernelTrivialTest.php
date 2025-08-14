@@ -1,22 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\proxy_block\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
 
 /**
- * Tests the trivial kernel functionality.
+ * Trivial kernel test to ensure kernel test infrastructure works.
  *
  * @group proxy_block
  */
 class TrivialKernelTrivialTest extends KernelTestBase {
 
   /**
-   * Tests a trivial condition.
-   *
-   * @coversNothing
+   * {@inheritdoc}
    */
-  public function testSomething(): void {
+  protected static $modules = ['proxy_block'];
+
+  /**
+   * Tests that kernel tests can run.
+   */
+  public function testTrivial(): void {
     $this->assertEquals('trivial', strtolower('TRIVIAL'));
   }
 
