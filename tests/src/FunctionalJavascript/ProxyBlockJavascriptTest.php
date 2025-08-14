@@ -57,7 +57,7 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     // Verify core blocks are available as options.
     $this->assertSession()->optionExists('settings[target_block][id]', 'system_branding_block');
     $this->assertSession()->optionExists('settings[target_block][id]', 'system_main_block');
-    
+
     // Verify empty option exists.
     $this->assertSession()->optionExists('settings[target_block][id]', '');
 
@@ -70,7 +70,7 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
 
     // Select empty option to test clearing.
     $page->selectFieldOption('settings[target_block][id]', '');
-    
+
     // Wait for AJAX after clearing selection.
     $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 10000);
 
@@ -104,10 +104,10 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     // Rapidly change selections between core blocks.
     $page->selectFieldOption('settings[target_block][id]', 'system_branding_block');
     $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
-    
+
     $page->selectFieldOption('settings[target_block][id]', 'system_main_block');
     $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
-    
+
     $page->selectFieldOption('settings[target_block][id]', 'system_powered_by_block');
     $this->assertSession()->waitForElementVisible('css', '#target-block-config-wrapper', 5000);
 
