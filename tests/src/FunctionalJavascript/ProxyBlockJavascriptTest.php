@@ -16,7 +16,7 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'starterkit_theme';
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}
@@ -25,7 +25,6 @@ class ProxyBlockJavascriptTest extends WebDriverTestBase {
     'proxy_block',
     'block',
     'system',
-    'user',
   ];
 
   /**

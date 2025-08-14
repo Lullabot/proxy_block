@@ -23,8 +23,7 @@
     "subform",
     "Subform",
     "SubformState",
-    "BROWSERTEST",
-    "starterkit"
+    "BROWSERTEST"
   ],
   "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
 }

@@ -46,15 +46,16 @@ vendor/bin/drush cr
 #### Recommended: Local Development Testing (Fast & Reliable)
 
 ```bash
-# Fast unit tests (recommended for development) - uses optimized local config
-./scripts/test-local.sh fast
+# Unit tests (recommended for development) - uses optimized local config
+./scripts/test-local.sh unit
 ./scripts/test-local.sh module proxy_block
 
 # Specific module unit tests with testdox output
 ./scripts/test-local.sh unit web/modules/contrib/proxy_block/tests/src/Unit/ --testdox
 
-# Direct PHPUnit with local config
-ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=fast --testdox'
+# Direct PHPUnit with local config - same test suites as Drupal core
+ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=unit --testdox'
+ddev exec 'php vendor/bin/phpunit -c web/core/phpunit.local.xml --testsuite=unit-component --testdox'
 ```
 
 #### Standard Commands (May Hang on Kernel/Functional Tests)
