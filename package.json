@@ -42,5 +42,8 @@
     "semantic-release": "^22.0.0",
     "stylelint": "^16.22.0",
     "stylelint-config-standard": "^38.0.0"
+  },
+  "dependencies": {
+    "@lullabot/playwright-drupal": "github:Lullabot/playwright-drupal"
   }
 }

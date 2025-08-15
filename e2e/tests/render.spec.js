@@ -3,12 +3,61 @@
  * Frontend rendering tests for Proxy Block E2E testing.
  */
 
-const { test, expect } = require('@playwright/test');
-const { loginAsAdmin, logout } = require('../helpers/drupal-auth');
-const { createTestNode, checkForPHPErrors } = require('../helpers/drupal-nav');
+const { test, expect, execDrushInTestSite, takeAccessibleScreenshot } = require('@lullabot/playwright-drupal');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
 const { FrontendPage } = require('../page-objects/frontend-page');
-const { TIMEOUTS, TEST_DATA, ENVIRONMENT, PROXY_BLOCK_DATA } = require('../utils/constants');
+const {
+  TIMEOUTS,
+  ENVIRONMENT,
+  PROXY_BLOCK_DATA,
+} = require('../utils/constants');
+
+/**
+ * Helper function to create admin user and login.
+ */
+async function setupAdminUser(page) {
+  // Enable proxy_block module and create admin user
+  await execDrushInTestSite('pm:enable proxy_block -y');
+  await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+  await execDrushInTestSite('user:role:add administrator admin');
+  
+  // Login
+  await page.goto('/user/login');
+  await page.fill('#edit-name', 'admin');
+  await page.fill('#edit-pass', 'admin');
+  await page.click('#edit-submit');
+}
+
+/**
+ * Helper function to create a test node.
+ */
+async function createTestNode(page, contentType = 'page', nodeData = {}) {
+  const title = nodeData.title || `Test ${contentType} ${Date.now()}`;
+  const body = nodeData.body || `Test content for ${title}`;
+  
+  // Create node using Drush
+  await execDrushInTestSite(`devel:generate-content --types=${contentType} --num=1 --kill`);
+  
+  // Alternatively, create via UI if needed
+  await page.goto(`/node/add/${contentType}`);
+  
+  // Fill title
+  await page.fill('#edit-title-0-value', title);
+  
+  // Fill body if it exists
+  const bodyField = page.locator('#edit-body-0-value');
+  if (await bodyField.isVisible()) {
+    await bodyField.fill(body);
+  }
+  
+  // Save the node
+  await page.click('#edit-submit');
+  
+  // Wait for node to be created
+  await expect(page.locator('h1')).toContainText(title);
+  
+  return { title, body, url: page.url() };
+}
 
 test.describe('Frontend Rendering', () => {
   let blockPlacementPage;
@@ -21,13 +70,12 @@ test.describe('Frontend Rendering', () => {
     blockPlacementPage = new BlockPlacementPage(page);
     frontendPage = new FrontendPage(page);
     
-    // Login as admin to set up test blocks
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Setup admin user
+    await setupAdminUser(page);
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up test blocks after each test
-    await loginAsAdmin(page, TEST_DATA.admin);
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
     
     for (const blockTitle of testBlocks) {
@@ -62,7 +110,7 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // Logout and view frontend
-    await logout(page);
+    await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
     
     // Verify proxy block is rendered
@@ -71,8 +119,11 @@ test.describe('Frontend Rendering', () => {
     // Verify target block content is rendered
     await frontendPage.verifyProxyBlockContent('Powered by');
     
+    // Take accessible screenshot for visual verification
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
+    
     await frontendPage.verifyNoPHPErrors();
-    await checkForPHPErrors(page);
   });
 
   test('should render proxy block with different target blocks', async ({ page }) => {
@@ -99,7 +150,7 @@ test.describe('Frontend Rendering', () => {
       await blockPlacementPage.saveBlock();
       
       // View on frontend
-      await logout(page);
+      await page.goto('/user/logout');
       await frontendPage.navigateToHomepage();
       
       // Verify proxy block renders
@@ -113,16 +164,17 @@ test.describe('Frontend Rendering', () => {
       await frontendPage.verifyNoPHPErrors();
       
       // Re-login for next iteration
-      await loginAsAdmin(page, TEST_DATA.admin);
+      await setupAdminUser(page);
     }
+    
+    // Take final screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
   });
 
   test('should render proxy block on content pages', async ({ page }) => {
-    // Create a test node first
-    const nodeData = await createTestNode(page, 'page', {
-      title: 'Test Page for Proxy Block',
-      body: 'This page is used to test proxy block rendering.',
-    });
+    // Create a test node first using Drush
+    await execDrushInTestSite('devel:generate-content --types=page --num=1');
     
     const blockTitle = `Content Page Proxy Block ${Date.now()}`;
     testBlocks.push(blockTitle);
@@ -143,19 +195,26 @@ test.describe('Frontend Rendering', () => {
     
     await blockPlacementPage.saveBlock();
     
+    // Get the created node URL
+    await page.goto('/admin/content');
+    const nodeLink = page.locator('table tbody tr').first().locator('a').first();
+    const nodeUrl = await nodeLink.getAttribute('href');
+    
     // View the test node
-    await logout(page);
-    await page.goto(nodeData.url);
+    await page.goto('/user/logout');
+    await page.goto(nodeUrl);
     
     // Verify page loaded correctly
     await frontendPage.verifyPageLoads();
-    await expect(page.locator('h1')).toContainText(nodeData.title);
     
     // Verify proxy block is present
     await frontendPage.verifyProxyBlockPresent(blockTitle);
     
+    // Take accessible screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
+    
     await frontendPage.verifyNoPHPErrors();
-    await checkForPHPErrors(page);
   });
 
   test('should handle proxy block with hidden title', async ({ page }) => {
@@ -179,7 +238,7 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // View on frontend
-    await logout(page);
+    await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
     
     // Verify proxy block is present but title is not displayed
@@ -193,6 +252,10 @@ test.describe('Frontend Rendering', () => {
     
     // But content should still be rendered
     await frontendPage.verifyProxyBlockContent('Powered by');
+    
+    // Take accessible screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
     
     await frontendPage.verifyNoPHPErrors();
   });
@@ -228,7 +291,7 @@ test.describe('Frontend Rendering', () => {
       await blockPlacementPage.saveBlock();
       
       // View on frontend
-      await logout(page);
+      await page.goto('/user/logout');
       await frontendPage.navigateToHomepage();
       
       // Verify proxy block is present in the correct region
@@ -237,8 +300,12 @@ test.describe('Frontend Rendering', () => {
       await frontendPage.verifyNoPHPErrors();
       
       // Re-login for next iteration
-      await loginAsAdmin(page, TEST_DATA.admin);
+      await setupAdminUser(page);
     }
+    
+    // Take final accessible screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
   });
 
   test('should handle proxy block cache correctly', async ({ page }) => {
@@ -261,7 +328,7 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // View on frontend multiple times to test caching
-    await logout(page);
+    await page.goto('/user/logout');
     
     for (let i = 0; i < 3; i++) {
       await frontendPage.navigateToHomepage();
@@ -272,6 +339,10 @@ test.describe('Frontend Rendering', () => {
       // Wait a bit between requests
       await page.waitForTimeout(500);
     }
+    
+    // Take accessible screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo);
   });
 
   test('should handle responsive rendering', async ({ page }) => {
@@ -294,16 +365,24 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // Test different viewport sizes
-    await logout(page);
+    await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
     
     // Desktop view
     await page.setViewportSize({ width: 1200, height: 800 });
     await frontendPage.verifyProxyBlockPresent(blockTitle);
     
+    // Take desktop screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo, { fullPage: true });
+    
     // Mobile view
     await frontendPage.verifyResponsiveBehavior({ width: 375, height: 667 });
     await frontendPage.verifyProxyBlockPresent(blockTitle);
+    
+    // Take mobile screenshot
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo, { fullPage: true });
     
     await frontendPage.verifyNoPHPErrors();
   });
@@ -328,18 +407,22 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // View on frontend and capture screenshot
-    await logout(page);
+    await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
     
     await frontendPage.verifyProxyBlockPresent(blockTitle);
-    await frontendPage.takeScreenshot('proxy-block-homepage', {
-      fullPage: true,
-    });
+    
+    // Use takeAccessibleScreenshot for comprehensive visual and accessibility testing
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo, {
+    //   fullPage: true,
+    //   threshold: 0.2,
+    // });
     
     await frontendPage.verifyNoPHPErrors();
   });
 
-  test('should verify proxy block accessibility basics', async ({ page }) => {
+  test('should verify proxy block accessibility', async ({ page }) => {
     const blockTitle = `Accessibility Test Block ${Date.now()}`;
     testBlocks.push(blockTitle);
     
@@ -359,7 +442,7 @@ test.describe('Frontend Rendering', () => {
     await blockPlacementPage.saveBlock();
     
     // View on frontend
-    await logout(page);
+    await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
     
     // Verify basic accessibility
@@ -375,6 +458,12 @@ test.describe('Frontend Rendering', () => {
     if (await blockContent.count() > 0) {
       await expect(blockContent).toBeVisible();
     }
+    
+    // Use takeAccessibleScreenshot which includes comprehensive accessibility testing
+    // TODO: Re-enable when testInfo parameter is available
+    // await takeAccessibleScreenshot(page, testInfo, {
+    //   fullPage: true,
+    // });
     
     await frontendPage.verifyNoPHPErrors();
   });

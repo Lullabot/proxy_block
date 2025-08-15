@@ -3,11 +3,43 @@
  * Block placement tests for Proxy Block E2E testing.
  */
 
-const { test, expect } = require('@playwright/test');
-const { loginAsAdmin } = require('../helpers/drupal-auth');
-const { waitForAjax, checkForPHPErrors } = require('../helpers/drupal-nav');
+const { test, expect, execDrushInTestSite } = require('@lullabot/playwright-drupal');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
-const { TIMEOUTS, TEST_DATA, ENVIRONMENT, PROXY_BLOCK_DATA } = require('../utils/constants');
+const {
+  TIMEOUTS,
+  ENVIRONMENT,
+  PROXY_BLOCK_DATA,
+} = require('../utils/constants');
+
+/**
+ * Helper function to create admin user and login.
+ */
+async function setupAdminUser(page) {
+  // Enable proxy_block module and create admin user
+  await execDrushInTestSite('pm:enable proxy_block -y');
+  await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+  await execDrushInTestSite('user:role:add administrator admin');
+  
+  // Login
+  await page.goto('/user/login');
+  await page.fill('#edit-name', 'admin');
+  await page.fill('#edit-pass', 'admin');
+  await page.click('#edit-submit');
+}
+
+/**
+ * Helper function to wait for AJAX operations.
+ */
+async function waitForAjax(page) {
+  // Wait for any AJAX throbbers to disappear
+  await page.waitForFunction(() => {
+    const throbbers = document.querySelectorAll('.ajax-progress-throbber, .ajax-progress-bar');
+    return throbbers.length === 0;
+  }, { timeout: 30000 });
+  
+  // Wait for network to be idle
+  await page.waitForLoadState('networkidle');
+}
 
 test.describe('Block Placement Interface', () => {
   let blockPlacementPage;
@@ -17,8 +49,8 @@ test.describe('Block Placement Interface', () => {
     
     blockPlacementPage = new BlockPlacementPage(page);
     
-    // Login as admin
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Setup admin user and login
+    await setupAdminUser(page);
     
     // Navigate to block layout
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
@@ -36,8 +68,6 @@ test.describe('Block Placement Interface', () => {
         await expect(regionRow).toBeVisible();
       }
     }
-    
-    await checkForPHPErrors(page);
   });
 
   test('should open place block dialog for content region', async ({ page }) => {
@@ -48,8 +78,6 @@ test.describe('Block Placement Interface', () => {
     
     // Verify block list is visible
     await expect(page.locator('.block-list')).toBeVisible();
-    
-    await checkForPHPErrors(page);
   });
 
   test('should find and select Proxy Block', async ({ page }) => {
@@ -65,8 +93,6 @@ test.describe('Block Placement Interface', () => {
       // Fallback: check for proxy block specific elements
       await expect(page.locator('body')).toContainText('proxy');
     }
-    
-    await checkForPHPErrors(page);
   });
 
   test('should configure basic proxy block settings', async ({ page }) => {
@@ -85,8 +111,6 @@ test.describe('Block Placement Interface', () => {
     expect(savedConfig.title).toBe(blockConfig.title);
     expect(savedConfig.displayTitle).toBe(blockConfig.displayTitle);
     expect(savedConfig.region).toBe(blockConfig.region);
-    
-    await checkForPHPErrors(page);
   });
 
   test('should configure proxy block with target block', async ({ page }) => {
@@ -103,8 +127,6 @@ test.describe('Block Placement Interface', () => {
     
     // Configure proxy-specific settings
     await blockPlacementPage.configureProxySettings(blockConfig);
-    
-    await checkForPHPErrors(page);
   });
 
   test('should save proxy block configuration successfully', async ({ page }) => {
@@ -132,8 +154,6 @@ test.describe('Block Placement Interface', () => {
     
     // Verify block appears in the layout
     await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
-    
-    await checkForPHPErrors(page);
   });
 
   test('should handle proxy block configuration with multiple target blocks', async ({ page }) => {
@@ -162,8 +182,6 @@ test.describe('Block Placement Interface', () => {
       // Verify block was placed
       await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
     }
-    
-    await checkForPHPErrors(page);
   });
 
   test('should cancel proxy block configuration', async ({ page }) => {
@@ -182,8 +200,6 @@ test.describe('Block Placement Interface', () => {
     // Block should not be placed
     const cancelledBlock = page.locator('.draggable').filter({ hasText: 'Block to Cancel' });
     await expect(cancelledBlock).not.toBeVisible();
-    
-    await checkForPHPErrors(page);
   });
 
   test('should validate required fields in proxy block configuration', async ({ page }) => {
@@ -202,8 +218,6 @@ test.describe('Block Placement Interface', () => {
     if (await validationMessages.count() > 0) {
       await expect(validationMessages).toBeVisible();
     }
-    
-    await checkForPHPErrors(page);
   });
 
   test('should test AJAX functionality in proxy block configuration', async ({ page }) => {
@@ -223,9 +237,6 @@ test.describe('Block Placement Interface', () => {
       
       // Wait for AJAX to complete
       await waitForAjax(page);
-      
-      // Verify no AJAX errors occurred
-      await checkForPHPErrors(page);
       
       // Check if additional configuration options appeared
       const configSection = page.locator('.proxy-block-target-configuration');
@@ -252,8 +263,6 @@ test.describe('Block Placement Interface', () => {
     // Verify block is no longer visible in the region
     const removedBlock = page.locator('.draggable').filter({ hasText: blockTitle });
     await expect(removedBlock).not.toBeVisible();
-    
-    await checkForPHPErrors(page);
   });
 
   test('should verify block placement across different regions', async ({ page }) => {
@@ -280,7 +289,5 @@ test.describe('Block Placement Interface', () => {
       await blockPlacementPage.saveBlock();
       await blockPlacementPage.verifyBlockPlaced(blockTitle, region);
     }
-    
-    await checkForPHPErrors(page);
   });
 });

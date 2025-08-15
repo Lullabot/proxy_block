@@ -130,19 +130,8 @@ const PROXY_BLOCK_DATA = {
  * Error patterns to watch for.
  */
 const ERROR_PATTERNS = {
-  php: [
-    'Fatal error',
-    'Parse error',
-    'Notice:',
-    'Warning:',
-    'Deprecated:',
-  ],
-  javascript: [
-    'Uncaught',
-    'TypeError',
-    'ReferenceError',
-    'SyntaxError',
-  ],
+  php: ['Fatal error', 'Parse error', 'Notice:', 'Warning:', 'Deprecated:'],
+  javascript: ['Uncaught', 'TypeError', 'ReferenceError', 'SyntaxError'],
   drupal: [
     'The website encountered an unexpected error',
     'Drupal\\Core\\Database\\DatabaseExceptionWrapper',
@@ -154,9 +143,11 @@ const ERROR_PATTERNS = {
  * Test utilities and helpers.
  */
 const UTILS = {
-  generateUniqueId: () => `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  generateTestTitle: (prefix = 'Test') => `${prefix} ${new Date().toISOString()}`,
-  sleep: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
+  generateUniqueId: () =>
+    `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  generateTestTitle: (prefix = 'Test') =>
+    `${prefix} ${new Date().toISOString()}`,
+  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
 };
 
 module.exports = {

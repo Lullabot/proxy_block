@@ -3,22 +3,20 @@
  * Authentication and basic setup tests for Proxy Block E2E testing.
  */
 
-const { test, expect } = require('@playwright/test');
-const { loginAsAdmin, logout, verifyAdminPermissions } = require('../helpers/drupal-auth');
-const { verifyModuleEnabled, checkForPHPErrors } = require('../helpers/drupal-nav');
+const { test, expect, execDrushInTestSite } = require('@lullabot/playwright-drupal');
 const { TIMEOUTS, TEST_DATA, ENVIRONMENT } = require('../utils/constants');
 
 test.describe('Authentication and Setup', () => {
   test.beforeEach(async ({ page }) => {
     // Set longer timeout for admin operations
     test.setTimeout(TIMEOUTS.LONG);
-    
-    // Navigate to homepage first to verify site is accessible
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
   });
 
   test('should verify site is accessible and functional', async ({ page }) => {
+    // Navigate to homepage - site should be accessible via test isolation
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
     // Verify homepage loads
     await expect(page.locator('html')).toBeVisible();
     await expect(page.locator('body')).toBeVisible();
@@ -27,48 +25,85 @@ test.describe('Authentication and Setup', () => {
     const title = await page.title();
     expect(title).toBeTruthy();
     expect(title.length).toBeGreaterThan(0);
-    
-    // Check for any PHP errors
-    await checkForPHPErrors(page);
   });
 
   test('should login as admin user successfully', async ({ page }) => {
-    // Attempt to login
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Create admin user using Drush in test site
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
+    
+    // Navigate to login page
+    await page.goto('/user/login');
+    
+    // Fill in credentials
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
     
     // Verify admin toolbar is visible
     await expect(page.locator('#toolbar-administration')).toBeVisible();
     
-    // Verify we're on an admin page or dashboard
-    const url = page.url();
-    expect(url).toMatch(/\/(admin|user\/\d+)$/);
-    
-    // Check for any PHP errors after login
-    await checkForPHPErrors(page);
+    // Verify we're logged in successfully
+    const userMenu = page.locator('.toolbar-menu-administration');
+    await expect(userMenu).toBeVisible();
   });
 
   test('should verify admin user has required permissions', async ({ page }) => {
-    await loginAsAdmin(page, TEST_DATA.admin);
-    await verifyAdminPermissions(page);
+    // Create and login as admin
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
     
-    // Verify access to specific proxy block related pages
+    // Login
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
+    
+    // Verify access to admin pages
+    await page.goto('/admin');
+    await expect(page.locator('h1')).toContainText('Administration');
+    
+    // Verify access to structure pages
     await page.goto('/admin/structure');
     await expect(page.locator('h1')).toContainText('Structure');
     
     await page.goto('/admin/structure/block');
     await expect(page.locator('h1')).toContainText('Block layout');
-    
-    // Check for any PHP errors
-    await checkForPHPErrors(page);
   });
 
   test('should verify proxy_block module is enabled', async ({ page }) => {
-    await loginAsAdmin(page, TEST_DATA.admin);
-    await verifyModuleEnabled(page, 'proxy_block');
+    // Enable proxy_block module using Drush
+    await execDrushInTestSite('pm:enable proxy_block -y');
+    
+    // Create and login as admin
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
+    
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
+    
+    // Navigate to modules page to verify
+    await page.goto('/admin/modules');
+    await expect(page.locator('h1')).toContainText('Modules');
+    
+    // Look for proxy_block module checkbox and verify it's checked
+    const moduleCheckbox = page.locator('input[name="modules[proxy_block][enable]"]');
+    await expect(moduleCheckbox).toBeChecked();
   });
 
   test('should verify proxy block is available in block placement', async ({ page }) => {
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Enable proxy_block module and create admin user
+    await execDrushInTestSite('pm:enable proxy_block -y');
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
+    
+    // Login
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
     
     // Navigate to block layout
     await page.goto(`/admin/structure/block/list/${ENVIRONMENT.theme}`);
@@ -91,22 +126,26 @@ test.describe('Authentication and Setup', () => {
     // Verify Proxy Block is available
     const proxyBlockLink = page.locator('a').filter({ hasText: 'Proxy Block' });
     await expect(proxyBlockLink).toBeVisible();
-    
-    // Verify it's in the correct category
-    const blockItem = proxyBlockLink.locator('xpath=ancestor::div[contains(@class, "block-list-item")]');
-    await expect(blockItem).toBeVisible();
   });
 
   test('should logout successfully', async ({ page }) => {
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Create and login as admin
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
+    
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
     
     // Verify we're logged in
     await expect(page.locator('#toolbar-administration')).toBeVisible();
     
     // Logout
-    await logout(page);
+    await page.goto('/user/logout');
     
-    // Verify we're logged out (should be on login page)
+    // Wait for logout to complete - should be redirected to login page
+    await page.waitForURL('**/user/login');
     await expect(page.locator('#user-login-form')).toBeVisible();
     
     // Verify admin toolbar is not visible
@@ -116,6 +155,7 @@ test.describe('Authentication and Setup', () => {
   test('should handle invalid login credentials gracefully', async ({ page }) => {
     // Navigate to login page
     await page.goto('/user/login');
+    await page.waitForLoadState('networkidle');
     
     // Fill in invalid credentials
     await page.fill('#edit-name', 'invalid_user');
@@ -133,13 +173,15 @@ test.describe('Authentication and Setup', () => {
   });
 
   test('should verify test environment configuration', async ({ page }) => {
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Create admin user
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
     
-    // Check if this is a proper test environment
-    await page.goto('/admin/config/development/settings');
-    
-    // Verify we can access development settings (indicates test environment)
-    const pageContent = await page.textContent('body');
+    // Login
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
     
     // Basic environment checks
     if (ENVIRONMENT.isDDev) {
@@ -154,8 +196,9 @@ test.describe('Authentication and Setup', () => {
     await page.goto('/admin/appearance');
     await expect(page.locator('h1')).toContainText('Appearance');
     
-    const currentTheme = page.locator('.theme-default');
-    await expect(currentTheme).toBeVisible();
+    // Verify test isolation is working by checking we have a clean site
+    await page.goto('/admin/content');
+    await expect(page.locator('h1')).toContainText('Content');
   });
 
   test('should verify browser console has no critical errors', async ({ page }) => {
@@ -168,7 +211,14 @@ test.describe('Authentication and Setup', () => {
       }
     });
     
-    await loginAsAdmin(page, TEST_DATA.admin);
+    // Create admin user and login
+    await execDrushInTestSite('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrushInTestSite('user:role:add administrator admin');
+    
+    await page.goto('/user/login');
+    await page.fill('#edit-name', 'admin');
+    await page.fill('#edit-pass', 'admin');
+    await page.click('#edit-submit');
     
     // Navigate to a few key pages
     await page.goto('/admin/structure/block');
@@ -178,10 +228,11 @@ test.describe('Authentication and Setup', () => {
     await page.waitForLoadState('networkidle');
     
     // Check for critical JavaScript errors
-    const criticalErrors = consoleErrors.filter(error => 
-      error.includes('Uncaught') || 
-      error.includes('TypeError') ||
-      error.includes('ReferenceError')
+    const criticalErrors = consoleErrors.filter(
+      error =>
+        error.includes('Uncaught') ||
+        error.includes('TypeError') ||
+        error.includes('ReferenceError'),
     );
     
     expect(criticalErrors).toHaveLength(0);

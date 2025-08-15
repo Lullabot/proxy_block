@@ -4,12 +4,11 @@
  */
 
 const { expect } = require('@playwright/test');
-const { waitForAjax } = require('../helpers/drupal-nav');
 
 class BlockPlacementPage {
   constructor(page) {
     this.page = page;
-    
+
     // Selectors
     this.selectors = {
       placeBlockButton: '.block-list-secondary .button',
@@ -25,6 +24,20 @@ class BlockPlacementPage {
       blockList: '.block-list',
       placedBlocks: '.draggable',
     };
+  }
+
+  /**
+   * Wait for AJAX operations to complete.
+   */
+  async waitForAjax() {
+    // Wait for any AJAX throbbers to disappear
+    await this.page.waitForFunction(() => {
+      const throbbers = document.querySelectorAll('.ajax-progress-throbber, .ajax-progress-bar');
+      return throbbers.length === 0;
+    }, { timeout: 30000 });
+    
+    // Wait for network to be idle
+    await this.page.waitForLoadState('networkidle');
   }
 
   /**
@@ -59,7 +72,7 @@ class BlockPlacementPage {
     const searchInput = this.page.locator(this.selectors.blockSearchInput);
     if (await searchInput.isVisible()) {
       await searchInput.fill(searchTerm);
-      await waitForAjax(this.page);
+      await this.waitForAjax();
     }
   }
 
@@ -72,7 +85,7 @@ class BlockPlacementPage {
     const filterSelect = this.page.locator(this.selectors.blockFilterSelect);
     if (await filterSelect.isVisible()) {
       await filterSelect.selectOption(category);
-      await waitForAjax(this.page);
+      await this.waitForAjax();
     }
   }
 
@@ -81,12 +94,12 @@ class BlockPlacementPage {
    */
   async selectProxyBlock() {
     await this.searchForBlock('Proxy Block');
-    
+
     // Look for Proxy Block link
     const proxyBlockLink = this.page.locator(this.selectors.proxyBlockLink);
     await expect(proxyBlockLink).toBeVisible();
     await proxyBlockLink.click();
-    
+
     await this.page.waitForLoadState('networkidle');
     await expect(this.page.locator('h1')).toContainText('Configure block');
   }
@@ -111,7 +124,9 @@ class BlockPlacementPage {
     }
 
     // Set display title checkbox
-    const displayCheckbox = this.page.locator(this.selectors.blockDisplayTitleCheckbox);
+    const displayCheckbox = this.page.locator(
+      this.selectors.blockDisplayTitleCheckbox,
+    );
     if (await displayCheckbox.isVisible()) {
       if (displayTitle) {
         await displayCheckbox.check();
@@ -141,12 +156,14 @@ class BlockPlacementPage {
     if (await targetBlockSelect.isVisible()) {
       if (config.targetBlock) {
         await targetBlockSelect.selectOption(config.targetBlock);
-        await waitForAjax(this.page);
+        await this.waitForAjax();
       }
     }
 
     // If target block has additional configuration, handle it
-    const configurationSection = this.page.locator('.proxy-block-target-configuration');
+    const configurationSection = this.page.locator(
+      '.proxy-block-target-configuration',
+    );
     if (await configurationSection.isVisible()) {
       // Additional configuration would be handled here
       // This depends on the specific target block selected
@@ -159,10 +176,10 @@ class BlockPlacementPage {
   async saveBlock() {
     await this.page.locator(this.selectors.saveButton).click();
     await this.page.waitForLoadState('networkidle');
-    
+
     // Should redirect back to block layout page
     await expect(this.page.locator('h1')).toContainText('Block layout');
-    
+
     // Check for success message
     await expect(this.page.locator('.messages--status')).toBeVisible();
   }
@@ -173,7 +190,7 @@ class BlockPlacementPage {
   async cancelConfiguration() {
     await this.page.locator(this.selectors.cancelButton).click();
     await this.page.waitForLoadState('networkidle');
-    
+
     // Should redirect back to block layout page
     await expect(this.page.locator('h1')).toContainText('Block layout');
   }
@@ -187,7 +204,9 @@ class BlockPlacementPage {
   async verifyBlockPlaced(blockTitle, region = 'content') {
     // Look for the block in the specified region
     const regionRow = this.page.locator(`tr[data-region="${region}"]`);
-    await expect(regionRow.locator('.draggable').filter({ hasText: blockTitle })).toBeVisible();
+    await expect(
+      regionRow.locator('.draggable').filter({ hasText: blockTitle }),
+    ).toBeVisible();
   }
 
   /**
@@ -197,9 +216,11 @@ class BlockPlacementPage {
    */
   async removeBlock(blockTitle) {
     // Find the block row and click disable
-    const blockRow = this.page.locator('.draggable').filter({ hasText: blockTitle });
+    const blockRow = this.page
+      .locator('.draggable')
+      .filter({ hasText: blockTitle });
     await blockRow.locator('a[href*="disable"]').click();
-    
+
     await this.page.waitForLoadState('networkidle');
     await expect(this.page.locator('.messages--status')).toBeVisible();
   }
@@ -211,12 +232,12 @@ class BlockPlacementPage {
     const blocks = [];
     const blockLinks = this.page.locator('.block-list a');
     const count = await blockLinks.count();
-    
+
     for (let i = 0; i < count; i++) {
       const text = await blockLinks.nth(i).textContent();
       blocks.push(text.trim());
     }
-    
+
     return blocks;
   }
 }

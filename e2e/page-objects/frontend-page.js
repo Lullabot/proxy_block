@@ -8,7 +8,7 @@ const { expect } = require('@playwright/test');
 class FrontendPage {
   constructor(page) {
     this.page = page;
-    
+
     // Common selectors for Drupal frontend
     this.selectors = {
       content: '#main-content, .main-content, [role="main"]',
@@ -60,7 +60,7 @@ class FrontendPage {
     const pageTitle = await this.page.title();
     expect(pageTitle).not.toContain('Page not found');
     expect(pageTitle).not.toContain('Access denied');
-    
+
     // Check for main content area
     await expect(this.page.locator(this.selectors.content)).toBeVisible();
   }
@@ -73,19 +73,21 @@ class FrontendPage {
    */
   async verifyProxyBlockPresent(blockTitle, region = null) {
     let selector = this.selectors.proxyBlocks;
-    
+
     if (region) {
       selector = `.region-${region} ${this.selectors.proxyBlocks}`;
     }
-    
+
     const proxyBlock = this.page.locator(selector);
     await expect(proxyBlock).toBeVisible();
-    
+
     // If block title is specified, verify it's displayed
     if (blockTitle) {
-      await expect(proxyBlock.locator('h2, .block-title')).toContainText(blockTitle);
+      await expect(proxyBlock.locator('h2, .block-title')).toContainText(
+        blockTitle,
+      );
     }
-    
+
     return proxyBlock;
   }
 
@@ -97,9 +99,11 @@ class FrontendPage {
   async verifyProxyBlockContent(expectedContent) {
     const proxyBlock = this.page.locator(this.selectors.proxyBlocks);
     await expect(proxyBlock).toBeVisible();
-    
+
     // Check that the proxy block contains the expected content
-    await expect(proxyBlock.locator(this.selectors.blockContent)).toContainText(expectedContent);
+    await expect(proxyBlock.locator(this.selectors.blockContent)).toContainText(
+      expectedContent,
+    );
   }
 
   /**
@@ -110,7 +114,7 @@ class FrontendPage {
   async verifyTargetBlockRendered(targetBlockSelector) {
     const proxyBlock = this.page.locator(this.selectors.proxyBlocks);
     await expect(proxyBlock).toBeVisible();
-    
+
     // Check that target block content exists within proxy block
     await expect(proxyBlock.locator(targetBlockSelector)).toBeVisible();
   }
@@ -122,19 +126,22 @@ class FrontendPage {
     const blocks = [];
     const blockElements = this.page.locator(this.selectors.blocks);
     const count = await blockElements.count();
-    
+
     for (let i = 0; i < count; i++) {
       const block = blockElements.nth(i);
       const pluginId = await block.getAttribute('data-block-plugin-id');
-      const title = await block.locator('h2, .block-title').textContent().catch(() => '');
-      
+      const title = await block
+        .locator('h2, .block-title')
+        .textContent()
+        .catch(() => '');
+
       blocks.push({
         pluginId,
         title: title.trim(),
         visible: await block.isVisible(),
       });
     }
-    
+
     return blocks;
   }
 
@@ -143,16 +150,12 @@ class FrontendPage {
    */
   async verifyNoPHPErrors() {
     // Check for PHP error messages that might be displayed
-    const errorSelectors = [
-      '.php-error',
-      '.error-message',
-      '[class*="error"]',
-    ];
-    
+    const errorSelectors = ['.php-error', '.error-message', '[class*="error"]'];
+
     for (const selector of errorSelectors) {
       const errors = this.page.locator(selector);
       const count = await errors.count();
-      
+
       if (count > 0) {
         for (let i = 0; i < count; i++) {
           const errorText = await errors.nth(i).textContent();
@@ -185,7 +188,7 @@ class FrontendPage {
       fullPage: true,
       path: `test-results/screenshots/${name}-${Date.now()}.png`,
     };
-    
+
     await this.page.screenshot({ ...defaultOptions, ...options });
   }
 
@@ -196,7 +199,7 @@ class FrontendPage {
     // Check for basic accessibility requirements
     await expect(this.page.locator('html[lang]')).toBeVisible();
     await expect(this.page.locator('h1')).toBeVisible();
-    
+
     // Check that main content area has proper landmark
     const main = this.page.locator('main, [role="main"]');
     await expect(main).toBeVisible();
@@ -211,13 +214,13 @@ class FrontendPage {
     // Set mobile viewport
     await this.page.setViewportSize(viewport);
     await this.page.waitForLoadState('networkidle');
-    
+
     // Verify page still loads correctly
     await this.verifyPageLoads();
-    
+
     // Check that proxy blocks are still visible
     const proxyBlocks = this.page.locator(this.selectors.proxyBlocks);
-    if (await proxyBlocks.count() > 0) {
+    if ((await proxyBlocks.count()) > 0) {
       await expect(proxyBlocks.first()).toBeVisible();
     }
   }
@@ -229,11 +232,10 @@ class FrontendPage {
    */
   async waitForDynamicContent(timeout = 5000) {
     // Wait for any AJAX or dynamic content
-    await this.page.waitForFunction(
-      () => document.readyState === 'complete',
-      { timeout }
-    );
-    
+    await this.page.waitForFunction(() => document.readyState === 'complete', {
+      timeout,
+    });
+
     // Additional wait for any animations or transitions
     await this.page.waitForTimeout(500);
   }
