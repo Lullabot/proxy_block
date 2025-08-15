@@ -31,11 +31,16 @@ class BlockPlacementPage {
    */
   async waitForAjax() {
     // Wait for any AJAX throbbers to disappear
-    await this.page.waitForFunction(() => {
-      const throbbers = document.querySelectorAll('.ajax-progress-throbber, .ajax-progress-bar');
-      return throbbers.length === 0;
-    }, { timeout: 30000 });
-    
+    await this.page.waitForFunction(
+      () => {
+        const throbbers = document.querySelectorAll(
+          '.ajax-progress-throbber, .ajax-progress-bar',
+        );
+        return throbbers.length === 0;
+      },
+      { timeout: 30000 },
+    );
+
     // Wait for network to be idle
     await this.page.waitForLoadState('networkidle');
   }
@@ -66,7 +71,7 @@ class BlockPlacementPage {
   /**
    * Search for a block in the placement interface.
    *
-   * @param {string} searchTerm
+   * @param {string} searchTerm - The block name or text to search for
    */
   async searchForBlock(searchTerm) {
     const searchInput = this.page.locator(this.selectors.blockSearchInput);
@@ -79,7 +84,7 @@ class BlockPlacementPage {
   /**
    * Filter blocks by category.
    *
-   * @param {string} category
+   * @param {string} category - The block category to filter by
    */
   async filterByCategory(category) {
     const filterSelect = this.page.locator(this.selectors.blockFilterSelect);
@@ -107,7 +112,7 @@ class BlockPlacementPage {
   /**
    * Configure basic block settings.
    *
-   * @param {Object} config
+   * @param {Object} config - Block configuration options
    * @param {string} config.title - Block title
    * @param {boolean} config.displayTitle - Whether to display title
    * @param {string} config.region - Region to place block
@@ -147,7 +152,7 @@ class BlockPlacementPage {
   /**
    * Configure Proxy Block specific settings.
    *
-   * @param {Object} config
+   * @param {Object} config - Proxy block configuration options
    * @param {string} config.targetBlock - Target block plugin ID
    */
   async configureProxySettings(config = {}) {
@@ -198,8 +203,8 @@ class BlockPlacementPage {
   /**
    * Verify block was placed successfully.
    *
-   * @param {string} blockTitle
-   * @param {string} region
+   * @param {string} blockTitle - The title of the block to verify
+   * @param {string} region - The region where the block should be placed
    */
   async verifyBlockPlaced(blockTitle, region = 'content') {
     // Look for the block in the specified region
@@ -212,7 +217,7 @@ class BlockPlacementPage {
   /**
    * Remove a placed block.
    *
-   * @param {string} blockTitle
+   * @param {string} blockTitle - The title of the block to remove
    */
   async removeBlock(blockTitle) {
     // Find the block row and click disable

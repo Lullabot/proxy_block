@@ -27,7 +27,7 @@ class FrontendPage {
   /**
    * Navigate to a specific path.
    *
-   * @param {string} path
+   * @param {string} path - The path to navigate to
    */
   async navigate(path = '/') {
     await this.page.goto(path);
@@ -45,7 +45,7 @@ class FrontendPage {
   /**
    * Navigate to a specific node.
    *
-   * @param {number} nodeId
+   * @param {number} nodeId - The node ID to navigate to
    */
   async navigateToNode(nodeId) {
     await this.navigate(`/node/${nodeId}`);

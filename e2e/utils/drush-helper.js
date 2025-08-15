@@ -10,20 +10,20 @@ const execAsync = promisify(exec);
 
 /**
  * Execute Drush command in DDEV environment.
- * 
+ *
  * @param {string} command - Drush command to execute
- * @returns {Promise<string>} - Command output
+ * @return {Promise<string>} - Command output
  */
 async function execDrush(command) {
   try {
     const { stdout, stderr } = await execAsync(`ddev drush ${command}`, {
-      cwd: '/var/www/html'
+      cwd: '/var/www/html',
     });
-    
+
     if (stderr && !stderr.includes('project list')) {
       console.warn('Drush stderr:', stderr);
     }
-    
+
     return stdout.trim();
   } catch (error) {
     console.error(`Drush command failed: ${command}`, error);
@@ -42,11 +42,13 @@ async function createAdminUser() {
     } catch (e) {
       // User doesn't exist, which is fine
     }
-    
+
     // Create admin user
-    await execDrush('user:create admin --mail="admin@example.com" --password="admin"');
+    await execDrush(
+      'user:create admin --mail="admin@example.com" --password="admin"',
+    );
     await execDrush('user:role:add administrator admin');
-    
+
     console.log('Created admin user successfully');
   } catch (error) {
     console.error('Failed to create admin user:', error);
@@ -56,6 +58,7 @@ async function createAdminUser() {
 
 /**
  * Enable a module.
+ * @param {string} moduleName - Name of the module to enable
  */
 async function enableModule(moduleName) {
   try {

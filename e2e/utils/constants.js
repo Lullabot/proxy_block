@@ -147,7 +147,10 @@ const UTILS = {
     `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
   generateTestTitle: (prefix = 'Test') =>
     `${prefix} ${new Date().toISOString()}`,
-  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+  sleep: ms =>
+    new Promise(resolve => {
+      setTimeout(resolve, ms);
+    }),
 };
 
 module.exports = {
