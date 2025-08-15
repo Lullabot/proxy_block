@@ -26,7 +26,8 @@
     "BROWSERTEST",
     "DDEV",
     "ddev",
-    "Devel"
+    "Devel",
+    "Symfony"
   ],
   "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
 }
