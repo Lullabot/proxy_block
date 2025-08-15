@@ -22,9 +22,9 @@ env:
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
 jobs:
-  # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
+  # Combined Drupal CI Job - Composer, PHPStan, PHPUnit, and E2E Tests
   test:
-    name: '🧪 Drupal (${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
+    name: '🧪 Tests (Drupal ${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -57,6 +57,11 @@ jobs:
           extensions: gd, pdo_mysql, mbstring, xml, opcache, mysql, curl, zip, sockets
           tools: composer:v2
           coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -101,6 +106,9 @@ jobs:
         run: |
           composer config --no-plugins allow-plugins.phpstan/extension-installer true
           composer --dev --no-interaction --no-progress install
+
+          # Install Node.js dependencies for E2E tests
+          npm ci
 
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
@@ -211,6 +219,54 @@ jobs:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
             ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Install Playwright Browsers
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: npx playwright install chromium
+
+      - name: Run Playwright E2E Tests (Basic)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run basic CI-compatible tests
+          npx playwright test tests/e2e/tests/ci-basic.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+
+      - name: Run Playwright E2E Tests (Advanced)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run more advanced tests (may have dependency issues)
+          npx playwright test tests/e2e/tests/auth-simple.spec.js tests/e2e/tests/proxy-block-basic.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+        continue-on-error: true
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/playwright-report/
+          retention-days: 7
+
+      - name: Upload Playwright Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-test-results-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/
+          retention-days: 7
+
+      - name: Upload Playwright Screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/**/*.png
           retention-days: 14
           if-no-files-found: ignore
 
