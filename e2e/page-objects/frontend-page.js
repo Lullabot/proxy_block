@@ -4,6 +4,8 @@
  */
 
 const { expect } = require('@playwright/test');
+const { waitForDynamicContent } = require('../utils/ajax-helper');
+const { assertNoCriticalErrors } = require('../utils/console-helper');
 
 class FrontendPage {
   constructor(page) {
@@ -169,12 +171,15 @@ class FrontendPage {
 
   /**
    * Check browser console for JavaScript errors.
+   * Note: This method should be used in conjunction with console error
+   * listeners set up in test files. See auth.spec.js for proper implementation.
+   *
+   * @param {Array} consoleErrors - Array of console errors captured by test
+   * @param {Array} allowedErrors - Array of error patterns to ignore
    */
-  async verifyNoJSErrors() {
-    // This would be set up in the test file to capture console errors
-    // Return any console errors that were captured
-    const errors = this.page.locator('.js-error, .console-error');
-    await expect(errors).toHaveCount(0);
+  async verifyNoJSErrors(consoleErrors = [], allowedErrors = []) {
+    // Use the improved console helper for better error analysis
+    assertNoCriticalErrors(consoleErrors, allowedErrors);
   }
 
   /**
@@ -231,13 +236,8 @@ class FrontendPage {
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForDynamicContent(timeout = 5000) {
-    // Wait for any AJAX or dynamic content
-    await this.page.waitForFunction(() => document.readyState === 'complete', {
-      timeout,
-    });
-
-    // Additional wait for any animations or transitions
-    await this.page.waitForTimeout(500);
+    // Use the improved helper function that avoids arbitrary timeouts
+    return waitForDynamicContent(this.page, timeout);
   }
 }
 

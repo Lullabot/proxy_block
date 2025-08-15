@@ -9,6 +9,7 @@ const {
   execDrushInTestSite,
 } = require('@lullabot/playwright-drupal');
 const { TIMEOUTS, TEST_DATA, ENVIRONMENT } = require('../utils/constants');
+const { waitForAjax } = require('../utils/ajax-helper');
 
 test.describe('Authentication and Setup', () => {
   test.beforeEach(async ({ page }) => {
@@ -138,7 +139,7 @@ test.describe('Authentication and Setup', () => {
     const searchInput = page.locator('#edit-search');
     if (await searchInput.isVisible()) {
       await searchInput.fill('Proxy Block');
-      await page.waitForTimeout(1000); // Wait for AJAX search
+      await waitForAjax(page); // Wait for AJAX search
     }
 
     // Verify Proxy Block is available

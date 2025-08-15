@@ -21,20 +21,14 @@ use Drupal\user\UserInterface;
   id: 'proxy_block_test_context_aware',
   admin_label: new TranslatableMarkup('Context-Aware Test Block'),
   category: new TranslatableMarkup('Proxy Block Test'),
+  context_definitions: [
+    'node' => new ContextDefinition('entity:node', new TranslatableMarkup('Node'), TRUE),
+    'user' => new ContextDefinition('entity:user', new TranslatableMarkup('User'), FALSE),
+  ],
 )]
 final class ContextAwareTestBlock extends BlockBase implements ContextAwarePluginInterface {
 
   use ContextAwarePluginTrait;
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getContextDefinitions(): array {
-    return [
-      'node' => new ContextDefinition('entity:node', $this->t('Node'), TRUE),
-      'user' => new ContextDefinition('entity:user', $this->t('User'), FALSE),
-    ];
-  }
 
   /**
    * {@inheritdoc}

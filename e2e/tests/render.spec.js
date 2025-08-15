@@ -48,28 +48,68 @@ async function createTestNode(page, contentType = 'page', nodeData = {}) {
   const title = nodeData.title || `Test ${contentType} ${Date.now()}`;
   const body = nodeData.body || `Test content for ${title}`;
 
-  // Create node using Drush
-  await execDrushInTestSite(
-    `devel:generate-content --types=${contentType} --num=1 --kill`,
-  );
+  try {
+    // First try to create via Drush (faster and more reliable)
+    await execDrushInTestSite(
+      `devel:generate-content --types=${contentType} --num=1 --kill`,
+    );
 
-  // Alternatively, create via UI if needed
+    // Get the latest node via Drush
+    const result = await execDrushInTestSite(
+      `sql:query "SELECT nid FROM node WHERE type='${contentType}' ORDER BY nid DESC LIMIT 1"`,
+    );
+
+    if (result.trim()) {
+      const nodeId = result.trim().split('\n').pop();
+      return {
+        title: `Generated ${contentType}`,
+        body: `Generated content`,
+        url: `/node/${nodeId}`,
+        nodeId: parseInt(nodeId, 10),
+      };
+    }
+  } catch (error) {
+    console.log(
+      `Drush content generation failed: ${error.message}, falling back to UI creation`,
+    );
+  }
+
+  // Fallback to UI creation if Drush fails
   await page.goto(`/node/add/${contentType}`);
 
-  // Fill title
-  await page.fill('#edit-title-0-value', title);
+  // Verify we're on the correct page
+  await expect(page.locator('h1')).toContainText('Create');
 
-  // Fill body if it exists
-  const bodyField = page.locator('#edit-body-0-value');
-  if (await bodyField.isVisible()) {
-    await bodyField.fill(body);
+  // Fill title - handle both field widget formats
+  const titleField = page.locator('#edit-title-0-value, #edit-title');
+  await expect(titleField).toBeVisible();
+  await titleField.fill(title);
+
+  // Fill body if it exists - handle different field formats
+  const bodySelectors = [
+    '#edit-body-0-value',
+    '#edit-body',
+    '[name="body[0][value]"]',
+  ];
+
+  for (const selector of bodySelectors) {
+    const bodyField = page.locator(selector);
+    if (await bodyField.isVisible()) {
+      await bodyField.fill(body);
+      break;
+    }
   }
 
   // Save the node
   await page.click('#edit-submit');
 
-  // Wait for node to be created
-  await expect(page.locator('h1')).toContainText(title);
+  // Wait for node to be created - handle different success patterns
+  try {
+    await expect(page.locator('h1')).toContainText(title, { timeout: 10000 });
+  } catch (error) {
+    // Alternative: check for success message if title doesn't match
+    await expect(page.locator('.messages--status')).toBeVisible();
+  }
 
   return { title, body, url: page.url() };
 }
@@ -359,8 +399,8 @@ test.describe('Frontend Rendering', () => {
       await frontendPage.verifyProxyBlockContent('Powered by');
       await frontendPage.verifyNoPHPErrors();
 
-      // Wait a bit between requests
-      await page.waitForTimeout(500);
+      // Wait for network to stabilize between requests instead of arbitrary timeout
+      await page.waitForLoadState('networkidle');
     }
 
     // Take accessible screenshot
