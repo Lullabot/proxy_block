@@ -24,7 +24,7 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.DDEV_PRIMARY_URL || 'http://localhost',
+    baseURL: process.env.DDEV_PRIMARY_URL || 'http://drupal-contrib.ddev.site',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -34,6 +34,12 @@ module.exports = defineConfig({
 
     /* Record video on failure */
     video: 'retain-on-failure',
+
+    /* Ignore SSL certificate errors for local development */
+    ignoreHTTPSErrors: true,
+
+    /* Accept self-signed certificates */
+    acceptDownloads: true,
   },
 
   /* Configure projects for major browsers */
