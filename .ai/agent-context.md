@@ -85,6 +85,35 @@ vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/prox
 - FunctionalJavascript tests require proper browser driver setup
 - Tests are designed to be stable and reliable in CI environments
 
+#### End-to-End (E2E) Testing with Playwright
+
+The module includes Playwright E2E testing infrastructure for comprehensive cross-browser testing:
+
+```bash
+# Install Playwright dependencies
+ddev exec npm ci
+ddev exec npm run e2e:install
+
+# Run E2E tests
+ddev exec npm run e2e:test                # Headless mode
+ddev exec npm run e2e:test:headed         # With browser UI
+ddev exec npm run e2e:test:debug          # Debug mode
+
+# View test reports
+ddev exec npm run e2e:report
+
+# Run trivial infrastructure validation test
+ddev exec npx playwright test trivial.spec.js
+```
+
+#### E2E Testing Features
+
+- **Cross-browser support**: Chromium, Firefox, WebKit, Mobile Chrome/Safari
+- **CI/CD integration**: GitHub Actions workflows for automated testing
+- **Visual testing**: Screenshots and videos on test failures
+- **Infrastructure validation**: Trivial tests to verify setup
+- **Page Object Model**: Reusable page objects for maintainable tests
+
 ### PHP Code Quality
 
 ```bash
