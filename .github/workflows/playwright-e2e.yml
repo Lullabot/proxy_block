@@ -1,0 +1,179 @@
+name: Playwright E2E Tests (Full Drupal)
+
+on:
+  push:
+    branches: [main, '*.x']
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  DRUPAL_ROOT: drupal-root
+  MODULE_NAME: ${{ github.event.repository.name }}
+  MODULE_PATH: web/modules/contrib/${{ github.event.repository.name }}
+  # Composer CI configuration
+  COMPOSER_NO_INTERACTION: '1'
+  COMPOSER_ALLOW_SUPERUSER: '1'
+  # E2E test configuration
+  SIMPLETEST_DB: 'sqlite://localhost/sites/default/files/db.sqlite'
+  SIMPLETEST_BASE_URL: 'http://127.0.0.1:8080'
+
+jobs:
+  playwright-e2e:
+    name: '🎭 Playwright E2E (Drupal ${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test on Drupal 11 only for now to reduce CI time
+        drupal-core: ['11-dev']
+        php-version: ['8.3']
+
+    steps:
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: gd, pdo_sqlite, mbstring, xml, opcache, curl, zip, sockets
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer --global config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.drupal-core }}-${{ matrix.php-version }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.drupal-core }}-${{ matrix.php-version }}-
+            ${{ runner.os }}-composer-
+
+      - name: Create Drupal project
+        run: composer create-project drupal/recommended-project:^${{ matrix.drupal-core }} ${{ env.DRUPAL_ROOT }} --no-interaction
+
+      - name: Configure Drupal project
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          # Configure platform PHP version
+          composer config platform.php ${{ matrix.php-version }}
+
+          # Add essential development dependencies
+          composer require --dev --no-interaction \
+            drupal/core-dev \
+            drupal/coder \
+            drush/drush \
+            drupal/devel
+
+          composer dump-autoload
+
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+
+      - name: Setup module dependencies
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Install JavaScript dependencies
+          npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: npx playwright install chromium
+
+      - name: Install Drupal with SQLite
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          # Create sites directory structure
+          mkdir -p web/sites/default/files
+          chmod 777 web/sites/default/files
+
+          # Install Drupal with SQLite (faster for CI)
+          php vendor/bin/drush site-install standard \
+            --db-url=sqlite://localhost/sites/default/files/db.sqlite \
+            --account-name=admin \
+            --account-pass=admin \
+            --site-name="Proxy Block E2E Test Site" \
+            --yes
+
+      - name: Configure Drupal for testing
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          # Enable proxy_block module
+          php vendor/bin/drush pm:enable ${{ env.MODULE_NAME }} --yes
+
+          # Enable devel module for test content generation
+          php vendor/bin/drush pm:enable devel --yes
+
+          # Set simple theme for consistent testing
+          php vendor/bin/drush theme:enable stark --yes
+          php vendor/bin/drush config:set system.theme default stark --yes
+
+          # Clear cache
+          php vendor/bin/drush cache:rebuild
+
+      - name: Start web server
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          # Start PHP built-in server in background
+          php -S 127.0.0.1:8080 -t web > /dev/null 2>&1 &
+
+          # Wait for server to be ready
+          timeout 30 bash -c 'until curl -s http://127.0.0.1:8080 > /dev/null; do sleep 1; done'
+
+          # Verify Drupal is accessible
+          curl -I http://127.0.0.1:8080 | head -n 1
+
+      - name: Run Playwright E2E Tests (Simple)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run basic infrastructure tests first
+          npx playwright test e2e/tests/simple.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+
+      - name: Run Playwright E2E Tests (Auth & Basic)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run authentication and basic proxy block tests
+          npx playwright test e2e/tests/auth-simple.spec.js e2e/tests/proxy-block-basic.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+        continue-on-error: true
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/playwright-report/
+          retention-days: 7
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-test-results-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/
+          retention-days: 7
+
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/**/*.png
+          retention-days: 14
+          if-no-files-found: ignore

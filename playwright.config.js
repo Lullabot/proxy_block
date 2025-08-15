@@ -24,7 +24,10 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.DDEV_PRIMARY_URL || 'http://drupal-contrib.ddev.site',
+    baseURL:
+      process.env.DRUPAL_BASE_URL ||
+      process.env.DDEV_PRIMARY_URL ||
+      'http://127.0.0.1:8080',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -40,6 +43,13 @@ module.exports = defineConfig({
 
     /* Accept self-signed certificates */
     acceptDownloads: true,
+
+    /* Increase default timeout for CI environments */
+    actionTimeout: process.env.CI ? 30000 : 10000,
+    navigationTimeout: process.env.CI ? 30000 : 10000,
+
+    /* Viewport size for consistent testing */
+    viewport: { width: 1280, height: 720 },
   },
 
   /* Configure projects for major browsers */
