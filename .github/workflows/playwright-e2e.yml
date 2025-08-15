@@ -137,7 +137,7 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           # Run CI-compatible tests that don't depend on external libraries
-          npx playwright test e2e/tests/ci-basic.spec.js
+          npx playwright test tests/e2e/tests/ci-basic.spec.js
         env:
           DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
           CI: 'true'
@@ -146,7 +146,7 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           # Run more advanced tests (may have dependency issues)
-          npx playwright test e2e/tests/auth-simple.spec.js e2e/tests/simple.spec.js
+          npx playwright test tests/e2e/tests/auth-simple.spec.js tests/e2e/tests/simple.spec.js
         env:
           DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
           CI: 'true'

@@ -305,8 +305,8 @@ npm run e2e:test:headed
 npm run e2e:test:debug
 
 # Run specific test files
-npx playwright test e2e/tests/auth-simple.spec.js
-npx playwright test e2e/tests/ci-basic.spec.js
+npx playwright test tests/e2e/tests/auth-simple.spec.js
+npx playwright test tests/e2e/tests/ci-basic.spec.js
 ```
 
 **Option 2: Standard Drupal Site**
@@ -326,8 +326,8 @@ The E2E test suite includes:
 - **`ci-basic.spec.js`**: Core functionality tests (CI-compatible, no external dependencies)
 - **`auth-simple.spec.js`**: Authentication and basic admin operations
 - **`simple.spec.js`**: Infrastructure and basic site validation
-- **Page Objects**: Reusable components in `e2e/page-objects/`
-- **Utilities**: Helper functions in `e2e/utils/`
+- **Page Objects**: Reusable components in `tests/e2e/page-objects/`
+- **Utilities**: Helper functions in `tests/e2e/utils/`
 
 #### Test Configuration
 

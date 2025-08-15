@@ -72,7 +72,7 @@
   },
   "overrides": [
     {
-      "files": ["e2e/**/*.js"],
+      "files": ["tests/e2e/**/*.js"],
       "rules": {
         "no-await-in-loop": "off",
         "no-restricted-syntax": "off",

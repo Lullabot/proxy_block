@@ -27,7 +27,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run Playwright infrastructure tests
-        run: npx playwright test e2e/tests/simple.spec.js
+        run: npx playwright test tests/e2e/tests/simple.spec.js
         env:
           # Use a simple HTTP server for basic infrastructure testing
           DDEV_PRIMARY_URL: 'https://httpbin.org'
