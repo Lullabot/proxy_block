@@ -48,17 +48,6 @@ test.describe('Proxy Block Basic', () => {
     await page.waitForLoadState('networkidle');
 
     const loginForm = page.locator('#user-login-form');
-    
-    // Debug if login form not found
-    if (!(await loginForm.isVisible())) {
-      console.log('DEBUG: Login form not found in proxy-block-basic test');
-      console.log('Current URL:', page.url());
-      console.log('Page title:', await page.title());
-      
-      const bodyContent = await page.locator('body').innerHTML();
-      console.log('Page body content (first 1000 chars):', bodyContent.substring(0, 1000));
-    }
-    
     await expect(loginForm).toBeVisible(); // FAIL if no login form
 
     await page.fill('#edit-name', 'admin');

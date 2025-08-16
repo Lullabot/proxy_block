@@ -32,38 +32,8 @@ async function setupAdminUser(page) {
   await page.goto('/user/login');
   await page.waitForLoadState('networkidle');
 
-  // Login form MUST be available - debug if not found
+  // Login form MUST be available
   const loginForm = page.locator('#user-login-form');
-  
-  // Check if form exists, if not capture page content for debugging
-  if (!(await loginForm.isVisible())) {
-    console.log('DEBUG: Login form not found, capturing page content...');
-    console.log('Current URL:', page.url());
-    console.log('Page title:', await page.title());
-    
-    // Get the full page content to understand what's rendered
-    const bodyContent = await page.locator('body').innerHTML();
-    console.log('Page body content (first 2000 chars):', bodyContent.substring(0, 2000));
-    
-    // Look for any form elements
-    const forms = page.locator('form');
-    const formCount = await forms.count();
-    console.log('Number of forms found:', formCount);
-    
-    for (let i = 0; i < formCount; i++) {
-      const form = forms.nth(i);
-      const formId = await form.getAttribute('id');
-      const formClass = await form.getAttribute('class');
-      console.log(`Form ${i}: id="${formId}", class="${formClass}"`);
-    }
-    
-    // Check for error messages or redirects
-    const errorMessages = page.locator('.messages--error, .error-message');
-    if (await errorMessages.count() > 0) {
-      console.log('Error messages found:', await errorMessages.allTextContents());
-    }
-  }
-  
   await expect(loginForm).toBeVisible();
 
   await page.fill('#edit-name', 'admin');

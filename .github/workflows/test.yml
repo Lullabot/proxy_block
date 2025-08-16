@@ -226,6 +226,36 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: npx playwright install chromium
 
+      - name: Debug Drupal Installation Status
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          echo "=== Checking Drupal installation status ==="
+          
+          # Check if site is installed
+          echo "Checking drush status..."
+          php vendor/bin/drush status || echo "Drush status failed"
+          
+          # Check database connection
+          echo "Checking database connection..."
+          php vendor/bin/drush sql:query "SHOW TABLES LIKE 'users%';" || echo "Database query failed"
+          
+          # Check what the web server is serving
+          echo "Checking what web server returns..."
+          curl -s -o /tmp/homepage.html "http://127.0.0.1:8080/" || echo "Web server not responding"
+          echo "First 500 characters of homepage:"
+          head -c 500 /tmp/homepage.html || echo "No homepage content"
+          
+          # Check if login page works
+          echo "Checking login page..."
+          curl -s -o /tmp/login.html "http://127.0.0.1:8080/user/login" || echo "Login page not accessible"
+          echo "First 500 characters of login page:"
+          head -c 500 /tmp/login.html || echo "No login page content"
+          
+          # Check if core install is being served
+          if grep -q "install.php" /tmp/homepage.html; then
+            echo "WARNING: Site appears to be showing installer, not installed site"
+          fi
+
       - name: Run Playwright E2E Tests (Basic)
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
