@@ -5,6 +5,7 @@
 
 const { exec } = require('child_process');
 const { promisify } = require('util');
+const fs = require('fs');
 
 const execAsync = promisify(exec);
 
@@ -37,11 +38,14 @@ async function execDrush(command) {
           currentDir.indexOf('web/modules/contrib/'),
         );
         drushCommand = `${drupalRootPath}vendor/bin/drush ${command}`;
-        workingDir = drupalRootPath;
+        // Set working directory to the web root for proper database connection
+        workingDir = `${drupalRootPath}web`;
       } else {
         // Fallback: assume we're already at the Drupal root
         drushCommand = `vendor/bin/drush ${command}`;
-        workingDir = currentDir;
+        // Try to find web directory, otherwise use current directory
+        const webDir = `${currentDir}/web`;
+        workingDir = fs.existsSync(webDir) ? webDir : currentDir;
       }
     }
 
