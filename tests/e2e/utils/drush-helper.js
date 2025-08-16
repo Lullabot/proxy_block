@@ -27,7 +27,7 @@ async function execDrush(command) {
       drushCommand = `ddev drush ${command}`;
       workingDir = '/var/www/html';
     } else {
-      // In CI, we need to find the Drupal root directory
+      // Find the Drupal root directory
       const currentDir = process.cwd();
 
       // If we're in the module directory, navigate up to find the Drupal root
@@ -37,15 +37,14 @@ async function execDrush(command) {
           0,
           currentDir.indexOf('web/modules/contrib/'),
         );
-        drushCommand = `${drupalRootPath}vendor/bin/drush ${command}`;
-        // Set working directory to the web root for proper database connection
-        workingDir = `${drupalRootPath}web`;
+        // Run drush from Drupal root with --root=web flag
+        drushCommand = `vendor/bin/drush --root=web ${command}`;
+        // Set working directory to the Drupal root (where vendor/ and composer.json are)
+        workingDir = drupalRootPath;
       } else {
         // Fallback: assume we're already at the Drupal root
-        drushCommand = `vendor/bin/drush ${command}`;
-        // Try to find web directory, otherwise use current directory
-        const webDir = `${currentDir}/web`;
-        workingDir = fs.existsSync(webDir) ? webDir : currentDir;
+        drushCommand = `vendor/bin/drush --root=web ${command}`;
+        workingDir = currentDir;
       }
     }
 
