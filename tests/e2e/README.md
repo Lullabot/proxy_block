@@ -49,11 +49,9 @@ tests/e2e/
 
 **Files**: `auth-simple.spec.js`, `auth.spec.js`, `login-debug.spec.js`
 
-**Purpose**: Test user authentication workflows and admin access patterns.
+**Purpose**: Provide authentication helpers for proxy block testing without validating Drupal core functionality.
 
-- **Login Validation**: Test admin user authentication
-- **Session Management**: Verify login persistence and logout functionality
-- **Access Control**: Validate admin toolbar and permission-based access
+- **Authentication Helpers**: Utilities for logging in/out for test setup
 - **Debug Utilities**: Troubleshoot authentication issues in different environments
 
 **Environment Requirements**: Drupal site with admin user (username: `admin`, password: `admin`).
@@ -62,13 +60,12 @@ tests/e2e/
 
 **Files**: `block-placement.spec.js`, `proxy-block-basic.spec.js`
 
-**Purpose**: Test the core proxy block functionality within Drupal's block system.
+**Purpose**: Test the core proxy block functionality focusing on module-specific features.
 
-- **Block Discovery**: Verify proxy block appears in available blocks list
-- **Block Placement**: Test block placement through admin interface
-- **Configuration UI**: Validate proxy block configuration form
-- **Target Block Selection**: Test dropdown functionality and AJAX updates
-- **Context Mapping**: Verify context passing to target blocks
+- **Configuration UI**: Validate proxy block configuration form and unique settings
+- **Target Block Selection**: Test dropdown functionality and AJAX updates specific to proxy blocks
+- **Context Mapping**: Verify context passing to target blocks (key proxy block functionality)
+- **Proxy-Specific Logic**: Test edge cases and error handling unique to proxy blocks
 
 **Environment Requirements**: Drupal site with proxy_block module enabled and admin access.
 
@@ -76,13 +73,11 @@ tests/e2e/
 
 **Files**: `render.spec.js`
 
-**Purpose**: Validate that proxy blocks render correctly on the frontend.
+**Purpose**: Validate proxy block rendering functionality and target block integration.
 
-- **Frontend Display**: Test proxy block output on actual pages
-- **Content Validation**: Verify target block content appears correctly
-- **CSS/JavaScript**: Ensure styling and behavior work properly
-- **Performance**: Check for rendering performance issues
-- **Accessibility**: Basic accessibility validation
+- **Frontend Display**: Test proxy block output renders target block content correctly
+- **Content Validation**: Verify target block content appears within proxy block wrapper
+- **Edge Cases**: Test rendering with different target blocks, contexts, and configurations
 
 **Environment Requirements**: Complete Drupal site with content and proxy blocks configured.
 
@@ -105,6 +100,21 @@ tests/e2e/
 **`test-setup.js`**: Standardizes test environment preparation, including database isolation and cleanup procedures.
 
 **`theme-helper.js`**: Utilities for switching Drupal themes during testing to ensure consistent UI behavior.
+
+### Potential Upstream Contributions
+
+The following utilities could be valuable additions to `@lullabot/playwright-drupal`:
+
+**General Drupal Utilities** (upstream candidates):
+
+- `ajax-helper.js`: AJAX waiting patterns for Drupal admin interfaces
+- `console-helper.js`: Browser console error filtering and categorization
+- `drush-helper.js`: Drupal command-line utilities for test environments
+
+**Module-Specific Utilities** (keep in proxy_block):
+
+- Block placement page objects and proxy block configuration helpers
+- Proxy block specific test constants and validation utilities
 
 ## Running Tests
 
