@@ -86,12 +86,9 @@ test.describe('Proxy Block Configuration', () => {
       page.locator('.ui-dialog-title, h1:has-text("Configure")'),
     ).toContainText('Configure block');
 
-    // Verify we're configuring a proxy block
+    // Verify we're configuring a proxy block - the form MUST contain proxy-block in its ID
     const formIdElement = page.locator('form[id*="proxy-block"]');
-    if ((await formIdElement.count()) === 0) {
-      // Fallback: check for proxy block specific elements
-      await expect(page.locator('body')).toContainText('proxy');
-    }
+    await expect(formIdElement).toBeVisible();
   });
 
   test('should configure basic proxy block settings', async ({ page }) => {
@@ -227,13 +224,11 @@ test.describe('Proxy Block Configuration', () => {
       page.locator('.ui-dialog-title, h1:has-text("Configure")'),
     ).toContainText('Configure block');
 
-    // Look for validation messages
+    // Validation messages MUST appear when required fields are not filled
     const validationMessages = page.locator(
       '.form-error, .error, .messages--error',
     );
-    if ((await validationMessages.count()) > 0) {
-      await expect(validationMessages).toBeVisible();
-    }
+    await expect(validationMessages).toBeVisible();
   });
 
   test('should test AJAX functionality in proxy block configuration', async ({

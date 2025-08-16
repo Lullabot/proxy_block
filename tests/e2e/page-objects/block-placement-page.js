@@ -63,7 +63,7 @@ class BlockPlacementPage {
    * @param {string} region - Region name (e.g., 'content', 'sidebar')
    */
   async clickPlaceBlockForRegion(region = 'content') {
-    // Look for the "Place block in the X region" link
+    // Find the "Place block in the [Region Name] region" link - it MUST exist
     const placeLink = this.page
       .locator('a')
       .filter({
@@ -74,19 +74,9 @@ class BlockPlacementPage {
       })
       .first();
 
-    // If not found, try direct URL approach
-    if ((await placeLink.count()) === 0) {
-      // Fallback: navigate directly to block library with region parameter
-      const currentUrl = this.page.url();
-      const themeMatch = currentUrl.match(/\/([^/]+)$/);
-      const theme = themeMatch ? themeMatch[1] : 'olivero';
-
-      await this.page.goto(
-        `/admin/structure/block/library/${theme}?region=${region}`,
-      );
-    } else {
-      await placeLink.click();
-    }
+    // The place block link MUST be found - if not, the test should fail
+    await expect(placeLink).toBeVisible();
+    await placeLink.click();
 
     await this.page.waitForLoadState('networkidle');
 
@@ -213,32 +203,14 @@ class BlockPlacementPage {
    * Save the block configuration.
    */
   async saveBlock() {
-    // Try multiple approaches to find and click the save button
-    const saveSelectors = [
-      '.ui-dialog input[value="Save block"]:visible',
-      '.ui-dialog button:has-text("Save"):visible',
-      '.ui-dialog .form-submit:visible',
-      'input[value="Save block"]:visible',
-      'button:has-text("Save block"):visible',
-    ];
+    // Find the specific save button for the block configuration modal
+    const saveButton = this.page
+      .locator('.ui-dialog input[value="Save block"]')
+      .first();
 
-    let clicked = false;
-    for (const selector of saveSelectors) {
-      const button = this.page.locator(selector).first();
-      if ((await button.count()) > 0 && (await button.isVisible())) {
-        await button.click();
-        clicked = true;
-        break;
-      }
-    }
-
-    if (!clicked) {
-      // Last resort: click any save button
-      await this.page
-        .locator('[value*="Save"], [text*="Save"]')
-        .first()
-        .click();
-    }
+    // The save button MUST exist and be visible
+    await expect(saveButton).toBeVisible();
+    await saveButton.click();
 
     await this.page.waitForLoadState('networkidle');
 
