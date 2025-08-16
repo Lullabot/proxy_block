@@ -37,13 +37,13 @@ async function execDrush(command) {
           0,
           currentDir.indexOf('web/modules/contrib/'),
         );
-        // Run drush from Drupal root with --root=web flag
-        drushCommand = `vendor/bin/drush --root=web ${command}`;
+        // Run drush from Drupal root using php (like main CI workflow)
+        drushCommand = `php vendor/bin/drush --root=web ${command}`;
         // Set working directory to the Drupal root (where vendor/ and composer.json are)
         workingDir = drupalRootPath;
       } else {
         // Fallback: assume we're already at the Drupal root
-        drushCommand = `vendor/bin/drush --root=web ${command}`;
+        drushCommand = `php vendor/bin/drush --root=web ${command}`;
         workingDir = currentDir;
       }
     }
