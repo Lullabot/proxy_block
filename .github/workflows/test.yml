@@ -127,11 +127,28 @@ jobs:
           echo "=== Installing Drupal site ==="
           echo "Working directory: $(pwd)"
           echo "Web directory exists: $(ls -la web/ | head -5)"
-          
-          # Clear any existing installation
+
+          # Test database connectivity first
+          echo "=== Testing database connectivity ==="
+          php -r "
+            try {
+              \$pdo = new PDO('mysql:host=127.0.0.1;port=3306;dbname=drupal', 'drupal', 'drupal');
+              echo 'Database connection successful\n';
+            } catch (PDOException \$e) {
+              echo 'Database connection failed: ' . \$e->getMessage() . '\n';
+              exit(1);
+            }
+          "
+
+          # Ensure proper permissions
+          echo "=== Setting up permissions ==="
+          chmod 755 web/sites/default
           rm -f web/sites/default/settings.php
+
+          # Install Drupal with verbose output and error handling
+          echo "=== Running drush site-install ==="
+          set -x # Enable verbose output
           
-          # Install Drupal with explicit settings
           php vendor/bin/drush site-install standard \
             --root="$(pwd)/web" \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
@@ -139,13 +156,25 @@ jobs:
             --account-pass=admin \
             --site-name="Drupal Test Site" \
             --yes \
-            --verbose
+            --verbose 2>&1 || {
+              echo "=== Drush installation failed, checking details ==="
+              echo "Exit code: $?"
+              echo "Directory contents:"
+              ls -la web/sites/default/
+              exit 1
+            }
           
-          echo "=== Installation completed, checking status ==="
+          set +x # Disable verbose output
+
+          echo "=== Installation completed, verifying ==="
+          if [ -f "web/sites/default/settings.php" ]; then
+            echo "✓ settings.php created successfully"
+          else
+            echo "✗ settings.php not found - installation failed"
+            exit 1
+          fi
+
           php vendor/bin/drush --root="$(pwd)/web" status
-          
-          echo "=== Checking web directory ==="
-          ls -la web/sites/default/settings.php || echo "settings.php not found"
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
