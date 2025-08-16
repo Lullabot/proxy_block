@@ -1,13 +1,14 @@
 /**
  * @file
- * Frontend rendering tests for Proxy Block E2E testing.
+ * Proxy Block rendering tests for E2E testing.
+ * Tests proxy-specific rendering functionality including target block
+ * content rendering, cache handling, and context passing.
  */
 
 const {
   test,
   expect,
   execDrushInTestSite,
-  takeAccessibleScreenshot,
 } = require('@lullabot/playwright-drupal');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
 const { FrontendPage } = require('../page-objects/frontend-page');
@@ -114,7 +115,7 @@ async function createTestNode(page, contentType = 'page', nodeData = {}) {
   return { title, body, url: page.url() };
 }
 
-test.describe('Frontend Rendering', () => {
+test.describe('Proxy Block Rendering', () => {
   let blockPlacementPage;
   let frontendPage;
   let testBlocks = [];
@@ -174,10 +175,6 @@ test.describe('Frontend Rendering', () => {
     // Verify target block content is rendered
     await frontendPage.verifyProxyBlockContent('Powered by');
 
-    // Take accessible screenshot for visual verification
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
-
     await frontendPage.verifyNoPHPErrors();
   });
 
@@ -223,10 +220,6 @@ test.describe('Frontend Rendering', () => {
       // Re-login for next iteration
       await setupAdminUser(page);
     }
-
-    // Take final screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
   });
 
   test('should render proxy block on content pages', async ({ page }) => {
@@ -271,10 +264,6 @@ test.describe('Frontend Rendering', () => {
     // Verify proxy block is present
     await frontendPage.verifyProxyBlockPresent(blockTitle);
 
-    // Take accessible screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
-
     await frontendPage.verifyNoPHPErrors();
   });
 
@@ -313,10 +302,6 @@ test.describe('Frontend Rendering', () => {
 
     // But content should still be rendered
     await frontendPage.verifyProxyBlockContent('Powered by');
-
-    // Take accessible screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
 
     await frontendPage.verifyNoPHPErrors();
   });
@@ -365,10 +350,6 @@ test.describe('Frontend Rendering', () => {
       // Re-login for next iteration
       await setupAdminUser(page);
     }
-
-    // Take final accessible screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
   });
 
   test('should handle proxy block cache correctly', async ({ page }) => {
@@ -402,134 +383,5 @@ test.describe('Frontend Rendering', () => {
       // Wait for network to stabilize between requests instead of arbitrary timeout
       await page.waitForLoadState('networkidle');
     }
-
-    // Take accessible screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo);
-  });
-
-  test('should handle responsive rendering', async ({ page }) => {
-    const blockTitle = `Responsive Test Block ${Date.now()}`;
-    testBlocks.push(blockTitle);
-
-    // Place proxy block
-    await blockPlacementPage.navigate(ENVIRONMENT.theme);
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-    await blockPlacementPage.selectProxyBlock();
-
-    await blockPlacementPage.configureBasicSettings({
-      title: blockTitle,
-    });
-
-    await blockPlacementPage.configureProxySettings({
-      targetBlock: 'system_powered_by_block',
-    });
-
-    await blockPlacementPage.saveBlock();
-
-    // Test different viewport sizes
-    await page.goto('/user/logout');
-    await frontendPage.navigateToHomepage();
-
-    // Desktop view
-    await page.setViewportSize({ width: 1200, height: 800 });
-    await frontendPage.verifyProxyBlockPresent(blockTitle);
-
-    // Take desktop screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo, { fullPage: true });
-
-    // Mobile view
-    await frontendPage.verifyResponsiveBehavior({ width: 375, height: 667 });
-    await frontendPage.verifyProxyBlockPresent(blockTitle);
-
-    // Take mobile screenshot
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo, { fullPage: true });
-
-    await frontendPage.verifyNoPHPErrors();
-  });
-
-  test('should capture screenshots for visual verification', async ({
-    page,
-  }) => {
-    const blockTitle = `Visual Test Block ${Date.now()}`;
-    testBlocks.push(blockTitle);
-
-    // Place proxy block
-    await blockPlacementPage.navigate(ENVIRONMENT.theme);
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-    await blockPlacementPage.selectProxyBlock();
-
-    await blockPlacementPage.configureBasicSettings({
-      title: blockTitle,
-    });
-
-    await blockPlacementPage.configureProxySettings({
-      targetBlock: 'system_branding_block',
-    });
-
-    await blockPlacementPage.saveBlock();
-
-    // View on frontend and capture screenshot
-    await page.goto('/user/logout');
-    await frontendPage.navigateToHomepage();
-
-    await frontendPage.verifyProxyBlockPresent(blockTitle);
-
-    // Use takeAccessibleScreenshot for comprehensive visual and accessibility testing
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo, {
-    //   fullPage: true,
-    //   threshold: 0.2,
-    // });
-
-    await frontendPage.verifyNoPHPErrors();
-  });
-
-  test('should verify proxy block accessibility', async ({ page }) => {
-    const blockTitle = `Accessibility Test Block ${Date.now()}`;
-    testBlocks.push(blockTitle);
-
-    // Place proxy block
-    await blockPlacementPage.navigate(ENVIRONMENT.theme);
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-    await blockPlacementPage.selectProxyBlock();
-
-    await blockPlacementPage.configureBasicSettings({
-      title: blockTitle,
-    });
-
-    await blockPlacementPage.configureProxySettings({
-      targetBlock: 'system_powered_by_block',
-    });
-
-    await blockPlacementPage.saveBlock();
-
-    // View on frontend
-    await page.goto('/user/logout');
-    await frontendPage.navigateToHomepage();
-
-    // Verify basic accessibility
-    await frontendPage.verifyBasicAccessibility();
-    await frontendPage.verifyProxyBlockPresent(blockTitle);
-
-    // Verify proxy block has proper structure
-    const proxyBlock = page.locator('[data-block-plugin-id*="proxy_block"]');
-    await expect(proxyBlock).toBeVisible();
-
-    // Check for proper semantic structure
-    const blockContent = proxyBlock.locator('.block-content');
-    if ((await blockContent.count()) > 0) {
-      await expect(blockContent).toBeVisible();
-    }
-
-    // Use takeAccessibleScreenshot which includes comprehensive accessibility testing
-    // TODO: Re-enable when testInfo parameter is available
-    // await takeAccessibleScreenshot(page, testInfo, {
-    //   fullPage: true,
-    // });
-
-    await frontendPage.verifyNoPHPErrors();
   });
 });

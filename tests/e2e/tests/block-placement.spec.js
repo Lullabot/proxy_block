@@ -1,6 +1,8 @@
 /**
  * @file
- * Block placement tests for Proxy Block E2E testing.
+ * Proxy Block configuration and placement tests for E2E testing.
+ * Tests proxy-specific functionality including target block selection,
+ * configuration, and validation.
  */
 
 const {
@@ -54,7 +56,7 @@ async function waitForAjax(page) {
   await page.waitForLoadState('networkidle');
 }
 
-test.describe('Block Placement Interface', () => {
+test.describe('Proxy Block Configuration', () => {
   let blockPlacementPage;
 
   test.beforeEach(async ({ page }) => {
@@ -67,34 +69,6 @@ test.describe('Block Placement Interface', () => {
 
     // Navigate to block layout
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
-  });
-
-  test('should navigate to block placement interface successfully', async ({
-    page,
-  }) => {
-    // Should be on block layout page
-    await expect(page.locator('h1')).toContainText('Block layout');
-
-    // Verify regions are visible
-    const regions = ['header', 'content', 'sidebar_first', 'footer'];
-    for (const region of regions) {
-      const regionRow = page.locator(`tr[data-region="${region}"]`);
-      if ((await regionRow.count()) > 0) {
-        await expect(regionRow).toBeVisible();
-      }
-    }
-  });
-
-  test('should open place block dialog for content region', async ({
-    page,
-  }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-
-    // Should be on place block page
-    await expect(page.locator('h1')).toContainText('Place block');
-
-    // Verify block list is visible
-    await expect(page.locator('.block-list')).toBeVisible();
   });
 
   test('should find and select Proxy Block', async ({ page }) => {

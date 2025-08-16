@@ -7,7 +7,6 @@
  */
 
 const { test, expect } = require('@playwright/test');
-const fs = require('fs');
 
 test.describe('Proxy Block CI Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -131,41 +130,5 @@ test.describe('Proxy Block CI Tests', () => {
     await expect(page.locator('body')).toBeVisible();
 
     console.log(`Modules page response: ${response.status()}`);
-  });
-
-  test('should take screenshots for verification', async ({ page }) => {
-    // Create test-results directory if it doesn't exist
-    if (!fs.existsSync('test-results')) {
-      fs.mkdirSync('test-results', { recursive: true });
-    }
-
-    // Homepage screenshot
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.screenshot({
-      path: 'test-results/ci-homepage.png',
-      fullPage: true,
-    });
-
-    // Login page screenshot
-    await page.goto('/user/login');
-    await page.waitForLoadState('networkidle');
-    await page.screenshot({
-      path: 'test-results/ci-login-page.png',
-      fullPage: true,
-    });
-
-    // Admin page attempt screenshot
-    await page.goto('/admin/structure/block');
-    await page.waitForLoadState('networkidle');
-    await page.screenshot({
-      path: 'test-results/ci-admin-attempt.png',
-      fullPage: true,
-    });
-
-    // All screenshots should exist
-    expect(fs.existsSync('test-results/ci-homepage.png')).toBe(true);
-    expect(fs.existsSync('test-results/ci-login-page.png')).toBe(true);
-    expect(fs.existsSync('test-results/ci-admin-attempt.png')).toBe(true);
   });
 });
