@@ -18,10 +18,32 @@ async function execDrush(command) {
   try {
     // Check if running in DDEV environment
     const isDdev = process.env.IS_DDEV_PROJECT === 'true';
-    const drushCommand = isDdev
-      ? `ddev drush ${command}`
-      : `vendor/bin/drush ${command}`;
-    const workingDir = isDdev ? '/var/www/html' : process.cwd();
+
+    let drushCommand;
+    let workingDir;
+
+    if (isDdev) {
+      drushCommand = `ddev drush ${command}`;
+      workingDir = '/var/www/html';
+    } else {
+      // In CI, we need to find the Drupal root directory
+      const currentDir = process.cwd();
+
+      // If we're in the module directory, navigate up to find the Drupal root
+      if (currentDir.includes('web/modules/contrib/')) {
+        // Extract the path up to the Drupal root
+        const drupalRootPath = currentDir.substring(
+          0,
+          currentDir.indexOf('web/modules/contrib/'),
+        );
+        drushCommand = `${drupalRootPath}vendor/bin/drush ${command}`;
+        workingDir = drupalRootPath;
+      } else {
+        // Fallback: assume we're already at the Drupal root
+        drushCommand = `vendor/bin/drush ${command}`;
+        workingDir = currentDir;
+      }
+    }
 
     const { stdout, stderr } = await execAsync(drushCommand, {
       cwd: workingDir,
