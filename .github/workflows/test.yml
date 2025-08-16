@@ -124,11 +124,28 @@ jobs:
       - name: Install Drupal
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
+          echo "=== Installing Drupal site ==="
+          echo "Working directory: $(pwd)"
+          echo "Web directory exists: $(ls -la web/ | head -5)"
+          
+          # Clear any existing installation
+          rm -f web/sites/default/settings.php
+          
+          # Install Drupal with explicit settings
           php vendor/bin/drush site-install standard \
+            --root="$(pwd)/web" \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
             --account-name=admin \
             --account-pass=admin \
-            --yes
+            --site-name="Drupal Test Site" \
+            --yes \
+            --verbose
+          
+          echo "=== Installation completed, checking status ==="
+          php vendor/bin/drush --root="$(pwd)/web" status
+          
+          echo "=== Checking web directory ==="
+          ls -la web/sites/default/settings.php || echo "settings.php not found"
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -226,34 +243,27 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: npx playwright install chromium
 
-      - name: Debug Drupal Installation Status
+      - name: Verify Drupal Installation
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          echo "=== Checking Drupal installation status ==="
-          
-          # Check if site is installed
+          echo "=== Verifying Drupal installation ==="
+
+          # Check site status
           echo "Checking drush status..."
-          php vendor/bin/drush status || echo "Drush status failed"
-          
-          # Check database connection
-          echo "Checking database connection..."
-          php vendor/bin/drush sql:query "SHOW TABLES LIKE 'users%';" || echo "Database query failed"
-          
-          # Check what the web server is serving
-          echo "Checking what web server returns..."
-          curl -s -o /tmp/homepage.html "http://127.0.0.1:8080/" || echo "Web server not responding"
-          echo "First 500 characters of homepage:"
-          head -c 500 /tmp/homepage.html || echo "No homepage content"
-          
-          # Check if login page works
+          php vendor/bin/drush --root="$(pwd)/web" status
+
+          # Verify homepage works
+          echo "Checking homepage..."
+          curl -s "http://127.0.0.1:8080/" | head -c 200
+          echo ""
+
+          # Check that login page shows actual login form, not installer
           echo "Checking login page..."
-          curl -s -o /tmp/login.html "http://127.0.0.1:8080/user/login" || echo "Login page not accessible"
-          echo "First 500 characters of login page:"
-          head -c 500 /tmp/login.html || echo "No login page content"
-          
-          # Check if core install is being served
-          if grep -q "install.php" /tmp/homepage.html; then
-            echo "WARNING: Site appears to be showing installer, not installed site"
+          if curl -s "http://127.0.0.1:8080/user/login" | grep -q "install.php"; then
+            echo "ERROR: Site is redirecting to installer - installation failed"
+            exit 1
+          else
+            echo "Login page accessible (not redirecting to installer)"
           fi
 
       - name: Run Playwright E2E Tests (Basic)
