@@ -9,15 +9,22 @@ const { promisify } = require('util');
 const execAsync = promisify(exec);
 
 /**
- * Execute Drush command in DDEV environment.
+ * Execute Drush command with environment-appropriate wrapper.
  *
  * @param {string} command - Drush command to execute
  * @return {Promise<string>} - Command output
  */
 async function execDrush(command) {
   try {
-    const { stdout, stderr } = await execAsync(`ddev drush ${command}`, {
-      cwd: '/var/www/html',
+    // Check if running in DDEV environment
+    const isDdev = process.env.IS_DDEV_PROJECT === 'true';
+    const drushCommand = isDdev
+      ? `ddev drush ${command}`
+      : `vendor/bin/drush ${command}`;
+    const workingDir = isDdev ? '/var/www/html' : process.cwd();
+
+    const { stdout, stderr } = await execAsync(drushCommand, {
+      cwd: workingDir,
     });
 
     if (stderr && !stderr.includes('project list')) {

@@ -238,12 +238,11 @@ jobs:
       - name: Run Playwright E2E Tests (Advanced)
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
-          # Run more advanced tests (may have dependency issues)
+          # Run more advanced tests
           npx playwright test tests/e2e/tests/auth-simple.spec.js tests/e2e/tests/proxy-block-basic.spec.js
         env:
           DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
           CI: 'true'
-        continue-on-error: true
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
