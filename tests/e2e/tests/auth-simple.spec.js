@@ -13,14 +13,33 @@ const { TIMEOUTS } = require('../utils/constants');
 
 test.describe('Authentication (Simple)', () => {
   test.beforeAll(async () => {
-    // Set up test environment
+    // Set up test environment - these operations are optional in CI
+    // as the module should already be enabled and admin user created
     try {
       await enableModule('proxy_block');
-      await createAdminUser();
-      await clearCache();
+      console.log('Module enabled successfully');
     } catch (error) {
-      console.error('Setup failed:', error);
-      // Continue with test - it might still work
+      console.warn(
+        'Module enable skipped (may already be enabled):',
+        error.message,
+      );
+    }
+
+    try {
+      await createAdminUser();
+      console.log('Admin user created successfully');
+    } catch (error) {
+      console.warn(
+        'Admin user creation skipped (may already exist):',
+        error.message,
+      );
+    }
+
+    try {
+      await clearCache();
+      console.log('Cache cleared successfully');
+    } catch (error) {
+      console.warn('Cache clear skipped:', error.message);
     }
   });
 

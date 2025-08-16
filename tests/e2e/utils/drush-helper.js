@@ -95,6 +95,18 @@ async function createAdminUser() {
  */
 async function enableModule(moduleName) {
   try {
+    // First check if module is already enabled
+    try {
+      const output = await execDrush(`pm:list --status=enabled --format=list`);
+      if (output.includes(moduleName)) {
+        console.log(`Module ${moduleName} is already enabled`);
+        return;
+      }
+    } catch (listError) {
+      // If we can't check the status, try to enable anyway
+      console.warn(`Could not check module status: ${listError.message}`);
+    }
+
     await execDrush(`pm:enable ${moduleName} -y`);
     console.log(`Enabled module: ${moduleName}`);
   } catch (error) {
