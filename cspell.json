@@ -23,7 +23,11 @@
     "subform",
     "Subform",
     "SubformState",
-    "BROWSERTEST"
+    "BROWSERTEST",
+    "DDEV",
+    "ddev",
+    "Devel",
+    "Symfony"
   ],
   "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
 }

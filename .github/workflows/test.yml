@@ -22,9 +22,9 @@ env:
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
 jobs:
-  # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
+  # Combined Drupal CI Job - Composer, PHPStan, PHPUnit, and E2E Tests
   test:
-    name: '🧪 Drupal (${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
+    name: '🧪 Tests (Drupal ${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -57,6 +57,11 @@ jobs:
           extensions: gd, pdo_mysql, mbstring, xml, opcache, mysql, curl, zip, sockets
           tools: composer:v2
           coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -102,6 +107,9 @@ jobs:
           composer config --no-plugins allow-plugins.phpstan/extension-installer true
           composer --dev --no-interaction --no-progress install
 
+          # Install Node.js dependencies for E2E tests
+          npm ci
+
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
@@ -116,11 +124,57 @@ jobs:
       - name: Install Drupal
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
+          echo "=== Installing Drupal site ==="
+          echo "Working directory: $(pwd)"
+          echo "Web directory exists: $(ls -la web/ | head -5)"
+
+          # Test database connectivity first
+          echo "=== Testing database connectivity ==="
+          php -r "
+            try {
+              \$pdo = new PDO('mysql:host=127.0.0.1;port=3306;dbname=drupal', 'drupal', 'drupal');
+              echo 'Database connection successful\n';
+            } catch (PDOException \$e) {
+              echo 'Database connection failed: ' . \$e->getMessage() . '\n';
+              exit(1);
+            }
+          "
+
+          # Ensure proper permissions
+          echo "=== Setting up permissions ==="
+          chmod 755 web/sites/default
+          rm -f web/sites/default/settings.php
+
+          # Install Drupal with verbose output and error handling
+          echo "=== Running drush site-install ==="
+          set -x # Enable verbose output
+          
           php vendor/bin/drush site-install standard \
+            --root="$(pwd)/web" \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
             --account-name=admin \
             --account-pass=admin \
-            --yes
+            --site-name="Drupal Test Site" \
+            --yes \
+            --verbose 2>&1 || {
+              echo "=== Drush installation failed, checking details ==="
+              echo "Exit code: $?"
+              echo "Directory contents:"
+              ls -la web/sites/default/
+              exit 1
+            }
+          
+          set +x # Disable verbose output
+
+          echo "=== Installation completed, verifying ==="
+          if [ -f "web/sites/default/settings.php" ]; then
+            echo "✓ settings.php created successfully"
+          else
+            echo "✗ settings.php not found - installation failed"
+            exit 1
+          fi
+
+          php vendor/bin/drush --root="$(pwd)/web" status
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -211,6 +265,76 @@ jobs:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
             ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Install Playwright Browsers
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: npx playwright install chromium
+
+      - name: Verify Drupal Installation
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          echo "=== Verifying Drupal installation ==="
+
+          # Check site status
+          echo "Checking drush status..."
+          php vendor/bin/drush --root="$(pwd)/web" status
+
+          # Verify homepage works
+          echo "Checking homepage..."
+          curl -s "http://127.0.0.1:8080/" | head -c 200
+          echo ""
+
+          # Check that login page shows actual login form, not installer
+          echo "Checking login page..."
+          if curl -s "http://127.0.0.1:8080/user/login" | grep -q "install.php"; then
+            echo "ERROR: Site is redirecting to installer - installation failed"
+            exit 1
+          else
+            echo "Login page accessible (not redirecting to installer)"
+          fi
+
+      - name: Run Playwright E2E Tests (Basic)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run basic CI-compatible tests
+          npx playwright test tests/e2e/tests/ci-basic.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+
+      - name: Run Playwright E2E Tests (Advanced)
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          # Run actual proxy block functionality tests (start with block-placement only)
+          npx playwright test tests/e2e/tests/block-placement.spec.js
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/playwright-report/
+          retention-days: 7
+
+      - name: Upload Playwright Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-test-results-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/
+          retention-days: 7
+
+      - name: Upload Playwright Screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/**/*.png
           retention-days: 14
           if-no-files-found: ignore
 

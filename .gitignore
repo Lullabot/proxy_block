@@ -10,3 +10,7 @@ phpunit.xml
 /.claude/settings.local.json
 /CLAUDE.local.md
 /.ai/agent-context.local.md
+
+# Playwrigt
+test-results/
+playwright-report/
