@@ -86,9 +86,11 @@ test.describe('Proxy Block Configuration', () => {
       page.locator('.ui-dialog-title, h1:has-text("Configure")'),
     ).toContainText('Configure block');
 
-    // Verify we're configuring a proxy block - the form MUST contain proxy-block in its ID
-    const formIdElement = page.locator('form[id*="proxy-block"]');
-    await expect(formIdElement).toBeVisible();
+    // Verify we're configuring a proxy block - look for the Target Block selection (unique to proxy block)
+    const targetBlockField = page.locator(
+      'select[name*="target_block"], combobox:has-text("Target Block")',
+    );
+    await expect(targetBlockField).toBeVisible();
   });
 
   test('should configure basic proxy block settings', async ({ page }) => {

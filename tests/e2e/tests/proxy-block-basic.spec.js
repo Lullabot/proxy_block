@@ -56,7 +56,7 @@ test.describe('Proxy Block Basic', () => {
     await page.waitForLoadState('networkidle');
 
     // Access proxy block configuration - must work with correct theme
-    await page.goto('/admin/structure/block/add/proxy_block/olivero');
+    await page.goto('/admin/structure/block/add/proxy_block_proxy/olivero');
     await page.waitForLoadState('networkidle');
 
     // MUST be on the configuration page
@@ -71,8 +71,11 @@ test.describe('Proxy Block Basic', () => {
     const targetBlockField = page.locator('#edit-settings-target-block');
     await expect(targetBlockField).toBeVisible();
 
-    // Save button MUST exist
-    const saveButton = page.locator('#edit-submit');
+    // Save button MUST exist - scroll to bottom to make sure it's visible
+    await page.keyboard.press('End');
+    const saveButton = page.locator(
+      'button:has-text("Save block"), input[value="Save block"]',
+    );
     await expect(saveButton).toBeVisible();
   });
 });
