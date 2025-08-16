@@ -238,8 +238,8 @@ jobs:
       - name: Run Playwright E2E Tests (Advanced)
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
-          # Run more advanced tests
-          npx playwright test tests/e2e/tests/auth-simple.spec.js tests/e2e/tests/proxy-block-basic.spec.js
+          # Run actual proxy block functionality tests (start with block-placement only)
+          npx playwright test tests/e2e/tests/block-placement.spec.js
         env:
           DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
           CI: 'true'

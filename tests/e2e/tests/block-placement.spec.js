@@ -5,11 +5,12 @@
  * configuration, and validation.
  */
 
+const { test, expect } = require('@playwright/test');
 const {
-  test,
-  expect,
-  execDrushInTestSite,
-} = require('@lullabot/playwright-drupal');
+  createAdminUser,
+  enableModule,
+  clearCache,
+} = require('../utils/drush-helper');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
 const {
   TIMEOUTS,
@@ -23,17 +24,22 @@ const {
  */
 async function setupAdminUser(page) {
   // Enable proxy_block module and create admin user
-  await execDrushInTestSite('pm:enable proxy_block -y');
-  await execDrushInTestSite(
-    'user:create admin --mail="admin@example.com" --password="admin"',
-  );
-  await execDrushInTestSite('user:role:add administrator admin');
+  await enableModule('proxy_block');
+  await createAdminUser();
+  await clearCache();
 
   // Login
   await page.goto('/user/login');
+  await page.waitForLoadState('networkidle');
+
+  // Login form MUST be available
+  const loginForm = page.locator('#user-login-form');
+  await expect(loginForm).toBeVisible();
+
   await page.fill('#edit-name', 'admin');
   await page.fill('#edit-pass', 'admin');
   await page.click('#edit-submit');
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -75,8 +81,10 @@ test.describe('Proxy Block Configuration', () => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
-    // Should be on block configuration page
-    await expect(page.locator('h1')).toContainText('Configure block');
+    // Should be on block configuration page (in modal)
+    await expect(
+      page.locator('.ui-dialog-title, h1:has-text("Configure")'),
+    ).toContainText('Configure block');
 
     // Verify we're configuring a proxy block
     const formIdElement = page.locator('form[id*="proxy-block"]');
@@ -141,7 +149,9 @@ test.describe('Proxy Block Configuration', () => {
     await blockPlacementPage.saveBlock();
 
     // Should be back on block layout page
-    await expect(page.locator('h1')).toContainText('Block layout');
+    await expect(page.locator('h1:has-text("Block layout")')).toContainText(
+      'Block layout',
+    );
 
     // Verify success message
     await expect(page.locator('.messages--status')).toBeVisible();
@@ -191,7 +201,9 @@ test.describe('Proxy Block Configuration', () => {
     await blockPlacementPage.cancelConfiguration();
 
     // Should be back on block layout page
-    await expect(page.locator('h1')).toContainText('Block layout');
+    await expect(page.locator('h1:has-text("Block layout")')).toContainText(
+      'Block layout',
+    );
 
     // Block should not be placed
     const cancelledBlock = page
@@ -211,7 +223,9 @@ test.describe('Proxy Block Configuration', () => {
     await saveButton.click();
 
     // Should still be on configuration page with validation errors
-    await expect(page.locator('h1')).toContainText('Configure block');
+    await expect(
+      page.locator('.ui-dialog-title, h1:has-text("Configure")'),
+    ).toContainText('Configure block');
 
     // Look for validation messages
     const validationMessages = page.locator(

@@ -5,11 +5,13 @@
  * content rendering, cache handling, and context passing.
  */
 
+const { test, expect } = require('@playwright/test');
 const {
-  test,
-  expect,
-  execDrushInTestSite,
-} = require('@lullabot/playwright-drupal');
+  createAdminUser,
+  enableModule,
+  clearCache,
+  execDrush,
+} = require('../utils/drush-helper');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
 const { FrontendPage } = require('../page-objects/frontend-page');
 const {
@@ -25,17 +27,22 @@ const {
  */
 async function setupAdminUser(page) {
   // Enable proxy_block module and create admin user
-  await execDrushInTestSite('pm:enable proxy_block -y');
-  await execDrushInTestSite(
-    'user:create admin --mail="admin@example.com" --password="admin"',
-  );
-  await execDrushInTestSite('user:role:add administrator admin');
+  await enableModule('proxy_block');
+  await createAdminUser();
+  await clearCache();
 
   // Login
   await page.goto('/user/login');
+  await page.waitForLoadState('networkidle');
+
+  // Login form MUST be available
+  const loginForm = page.locator('#user-login-form');
+  await expect(loginForm).toBeVisible();
+
   await page.fill('#edit-name', 'admin');
   await page.fill('#edit-pass', 'admin');
   await page.click('#edit-submit');
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -51,12 +58,12 @@ async function createTestNode(page, contentType = 'page', nodeData = {}) {
 
   try {
     // First try to create via Drush (faster and more reliable)
-    await execDrushInTestSite(
+    await execDrush(
       `devel:generate-content --types=${contentType} --num=1 --kill`,
     );
 
     // Get the latest node via Drush
-    const result = await execDrushInTestSite(
+    const result = await execDrush(
       `sql:query "SELECT nid FROM node WHERE type='${contentType}' ORDER BY nid DESC LIMIT 1"`,
     );
 
@@ -224,7 +231,7 @@ test.describe('Proxy Block Rendering', () => {
 
   test('should render proxy block on content pages', async ({ page }) => {
     // Create a test node first using Drush
-    await execDrushInTestSite('devel:generate-content --types=page --num=1');
+    await execDrush('devel:generate-content --types=page --num=1');
 
     const blockTitle = `Content Page Proxy Block ${Date.now()}`;
     testBlocks.push(blockTitle);

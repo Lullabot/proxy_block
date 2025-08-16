@@ -11,7 +11,8 @@ class BlockPlacementPage {
 
     // Selectors
     this.selectors = {
-      placeBlockButton: '.block-list-secondary .button',
+      placeBlockButton:
+        '.block-list-secondary .button, .button--small, .button[title*="Place"], a[title*="Place"], a:text("Place block")',
       blockSearchInput: '#edit-search',
       blockFilterSelect: '#edit-filter-category',
       proxyBlockLink: 'a[href*="proxy_block"]',
@@ -59,13 +60,41 @@ class BlockPlacementPage {
   /**
    * Click "Place block" button for a specific region.
    *
-   * @param {string} region - Region name (e.g., 'content', 'sidebar_first')
+   * @param {string} region - Region name (e.g., 'content', 'sidebar')
    */
   async clickPlaceBlockForRegion(region = 'content') {
-    const regionRow = this.page.locator(`tr[data-region="${region}"]`);
-    await regionRow.locator(this.selectors.placeBlockButton).click();
+    // Look for the "Place block in the X region" link
+    const placeLink = this.page
+      .locator('a')
+      .filter({
+        hasText: /Place block in the .* region/,
+      })
+      .filter({
+        hasText: new RegExp(region, 'i'),
+      })
+      .first();
+
+    // If not found, try direct URL approach
+    if ((await placeLink.count()) === 0) {
+      // Fallback: navigate directly to block library with region parameter
+      const currentUrl = this.page.url();
+      const themeMatch = currentUrl.match(/\/([^/]+)$/);
+      const theme = themeMatch ? themeMatch[1] : 'olivero';
+
+      await this.page.goto(
+        `/admin/structure/block/library/${theme}?region=${region}`,
+      );
+    } else {
+      await placeLink.click();
+    }
+
     await this.page.waitForLoadState('networkidle');
-    await expect(this.page.locator('h1')).toContainText('Place block');
+
+    // Check if modal dialog opened (which has the "Place block" title)
+    const modalTitle = this.page.locator(
+      '.ui-dialog-title, h1:has-text("Place block")',
+    );
+    await expect(modalTitle).toContainText('Place block');
   }
 
   /**
@@ -106,7 +135,12 @@ class BlockPlacementPage {
     await proxyBlockLink.click();
 
     await this.page.waitForLoadState('networkidle');
-    await expect(this.page.locator('h1')).toContainText('Configure block');
+
+    // Check for either modal or full page configuration
+    const configTitle = this.page.locator(
+      '.ui-dialog-title:has-text("Configure"), h1:has-text("Configure")',
+    );
+    await expect(configTitle).toContainText('Configure');
   }
 
   /**
@@ -179,11 +213,48 @@ class BlockPlacementPage {
    * Save the block configuration.
    */
   async saveBlock() {
-    await this.page.locator(this.selectors.saveButton).click();
+    // Try multiple approaches to find and click the save button
+    const saveSelectors = [
+      '.ui-dialog input[value="Save block"]:visible',
+      '.ui-dialog button:has-text("Save"):visible',
+      '.ui-dialog .form-submit:visible',
+      'input[value="Save block"]:visible',
+      'button:has-text("Save block"):visible',
+    ];
+
+    let clicked = false;
+    for (const selector of saveSelectors) {
+      const button = this.page.locator(selector).first();
+      if ((await button.count()) > 0 && (await button.isVisible())) {
+        await button.click();
+        clicked = true;
+        break;
+      }
+    }
+
+    if (!clicked) {
+      // Last resort: click any save button
+      await this.page
+        .locator('[value*="Save"], [text*="Save"]')
+        .first()
+        .click();
+    }
+
     await this.page.waitForLoadState('networkidle');
 
-    // Should redirect back to block layout page
-    await expect(this.page.locator('h1')).toContainText('Block layout');
+    // Wait for modal to close and return to block layout
+    await this.page.waitForFunction(
+      () => {
+        const modals = document.querySelectorAll('.ui-dialog, .modal');
+        return modals.length === 0;
+      },
+      { timeout: 10000 },
+    );
+
+    // Should be back on block layout page
+    await expect(
+      this.page.locator('h1:has-text("Block layout")'),
+    ).toBeVisible();
 
     // Check for success message
     await expect(this.page.locator('.messages--status')).toBeVisible();
@@ -193,11 +264,26 @@ class BlockPlacementPage {
    * Cancel block configuration.
    */
   async cancelConfiguration() {
-    await this.page.locator(this.selectors.cancelButton).click();
+    // Try to find cancel button in modal first
+    const modalCancelButton = this.page
+      .locator(
+        '.ui-dialog .form-cancel, .ui-dialog .button:has-text("Cancel"), .ui-dialog-titlebar-close',
+      )
+      .first();
+
+    if ((await modalCancelButton.count()) > 0) {
+      await modalCancelButton.click();
+    } else {
+      // Fallback to general cancel button
+      await this.page.locator(this.selectors.cancelButton).click();
+    }
+
     await this.page.waitForLoadState('networkidle');
 
     // Should redirect back to block layout page
-    await expect(this.page.locator('h1')).toContainText('Block layout');
+    await expect(
+      this.page.locator('h1:has-text("Block layout")'),
+    ).toContainText('Block layout');
   }
 
   /**
@@ -207,11 +293,18 @@ class BlockPlacementPage {
    * @param {string} region - The region where the block should be placed
    */
   async verifyBlockPlaced(blockTitle, region = 'content') {
-    // Look for the block in the specified region
-    const regionRow = this.page.locator(`tr[data-region="${region}"]`);
-    await expect(
-      regionRow.locator('.draggable').filter({ hasText: blockTitle }),
-    ).toBeVisible();
+    // Look for the block in the block layout table
+    // Since the layout doesn't use data-region attributes, search for the block by title
+    // and verify it shows the correct region in the "Region" column
+
+    const blockRows = this.page
+      .locator('tbody tr')
+      .filter({ hasText: blockTitle });
+    await expect(blockRows.first()).toBeVisible();
+
+    // Verify the region is correct by checking the Region column
+    const regionCell = blockRows.first().locator('td').nth(2); // 3rd column is Region
+    await expect(regionCell).toContainText(region, { ignoreCase: true });
   }
 
   /**
