@@ -95,22 +95,65 @@ async function createAdminUser() {
     // Add administrator role
     await execDrush('user:role:add administrator admin');
 
-    // Make sure the administrator role has all necessary permissions for block management
+    // Since Drupal 10.3+, UID 1 bypass is disabled in CI environments
+    // We need to explicitly grant ALL necessary permissions for block management
+
+    // Core block and theme administration permissions
     await execDrush('role:perm:add administrator "administer blocks"');
     await execDrush('role:perm:add administrator "administer block layout"');
     await execDrush('role:perm:add administrator "administer themes"');
+
+    // Essential administration access permissions
     await execDrush(
       'role:perm:add administrator "access administration pages"',
     );
     await execDrush(
       'role:perm:add administrator "view the administration theme"',
     );
-    await execDrush('role:perm:add administrator "access content"');
     await execDrush(
       'role:perm:add administrator "administer site configuration"',
     );
+    await execDrush('role:perm:add administrator "access toolbar"');
+
+    // Content and system permissions
+    await execDrush('role:perm:add administrator "access content"');
+    await execDrush('role:perm:add administrator "access content overview"');
+    await execDrush('role:perm:add administrator "administer content types"');
+    await execDrush('role:perm:add administrator "administer nodes"');
+
+    // Text format permissions
     await execDrush('role:perm:add administrator "use text format basic_html"');
     await execDrush('role:perm:add administrator "use text format full_html"');
+    await execDrush(
+      'role:perm:add administrator "use text format restricted_html"',
+    );
+
+    // Menu and URL alias permissions that might be needed
+    await execDrush('role:perm:add administrator "administer menu"');
+    await execDrush('role:perm:add administrator "administer url aliases"');
+
+    // User administration permissions
+    await execDrush('role:perm:add administrator "administer users"');
+    await execDrush('role:perm:add administrator "administer permissions"');
+
+    // Module administration permissions
+    await execDrush('role:perm:add administrator "administer modules"');
+
+    // Debug: Check what user ID was actually created
+    try {
+      const userInfo = await execDrush('user:information admin');
+      console.log('Admin user info:', userInfo);
+    } catch (e) {
+      console.warn('Could not get user info:', e.message);
+    }
+
+    // Debug: Check what permissions the administrator role actually has
+    try {
+      const rolePerms = await execDrush('role:list --filter=administrator');
+      console.log('Administrator role permissions:', rolePerms);
+    } catch (e) {
+      console.warn('Could not get role permissions:', e.message);
+    }
 
     console.log('Created admin user with comprehensive permissions');
   } catch (error) {
