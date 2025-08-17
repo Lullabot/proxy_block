@@ -75,22 +75,10 @@ async function createAdminUser() {
       // User doesn't exist, which is fine
     }
 
-    // Try to create admin user with explicit UID 1 for super admin privileges
-    // UID 1 bypasses all permission checks in Drupal
-    try {
-      await execDrush(
-        'user:create admin --mail="admin@example.com" --password="admin" --uid=1',
-      );
-    } catch (e) {
-      // If UID 1 is taken, create without UID specification
-      console.warn(
-        'Could not create user with UID 1, creating without:',
-        e.message,
-      );
-      await execDrush(
-        'user:create admin --mail="admin@example.com" --password="admin"',
-      );
-    }
+    // Create admin user (--uid option not supported in this drush version)
+    await execDrush(
+      'user:create admin --mail="admin@example.com" --password="admin"',
+    );
 
     // Add administrator role
     await execDrush('user:role:add administrator admin');
@@ -98,9 +86,36 @@ async function createAdminUser() {
     // Since Drupal 10.3+, UID 1 bypass is disabled in CI environments
     // We need to explicitly grant ALL necessary permissions for block management
 
+    // First, discover what permissions are actually available
+    try {
+      const allPerms = await execDrush('role:perm:list --format=yaml');
+      console.log(
+        'Available permissions sample:',
+        allPerms.split('\n').slice(0, 20).join('\n'),
+      );
+    } catch (e) {
+      console.warn('Could not list permissions:', e.message);
+    }
+
     // Core block and theme administration permissions
     await execDrush('role:perm:add administrator "administer blocks"');
-    await execDrush('role:perm:add administrator "administer block layout"');
+
+    // Try alternative permission names for block layout
+    const blockLayoutPermissions = [
+      'administer blocks', // This one exists
+      'access block library', // Alternative
+      'use contextual links', // For block configuration
+    ];
+
+    for (const permission of blockLayoutPermissions) {
+      try {
+        await execDrush(`role:perm:add administrator "${permission}"`);
+        console.log(`Added permission: ${permission}`);
+      } catch (e) {
+        console.log(`Permission "${permission}" not found: ${e.message}`);
+      }
+    }
+
     await execDrush('role:perm:add administrator "administer themes"');
 
     // Essential administration access permissions
