@@ -145,52 +145,75 @@ jobs:
           chmod 755 web/sites/default
           rm -f web/sites/default/settings.php
 
-          # Install Drupal with verbose output and error handling
-          echo "=== Running drush site-install ==="
-          
-          # Check if drush is working at all
-          echo "Testing drush status before installation..."
-          php vendor/bin/drush --root="$(pwd)/web" status || echo "Drush status failed (expected before installation)"
-          
-          echo "Testing drush core requirements..."
-          php vendor/bin/drush --root="$(pwd)/web" core:requirements || echo "Core requirements check failed"
-          
-          # Run the actual installation with better error capture
-          echo "Starting site-install..."
-          set -x # Enable verbose output
-          
-          DRUSH_EXIT_CODE=0
-          php vendor/bin/drush site-install standard \
-            --root="$(pwd)/web" \
-            --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
-            --account-name=admin \
-            --account-pass=admin \
-            --site-name="Drupal Test Site" \
-            --yes \
-            --verbose || DRUSH_EXIT_CODE=$?
-          
-          set +x # Disable verbose output
-          
-          # Check if installation failed
-          if [ $DRUSH_EXIT_CODE -ne 0 ]; then
-            echo "=== Drush installation failed ==="
-            echo "Exit code: $DRUSH_EXIT_CODE"
-            echo "Directory contents:"
-            ls -la web/sites/default/
-            echo "Attempting to get more details..."
-            php vendor/bin/drush --root="$(pwd)/web" status || echo "Status check failed"
-            exit 1
+          # Debug environment and drush setup
+          echo "=== Environment debugging ==="
+          echo "PHP version: $(php --version | head -1)"
+          echo "Current working directory: $(pwd)"
+          echo "Checking if vendor directory exists:"
+          ls -la vendor/ | head -5
+          echo "Checking if drush exists in vendor/bin:"
+          ls -la vendor/bin/drush || echo "drush not found in vendor/bin"
+          echo "Checking vendor/drush/drush directory:"
+          ls -la vendor/drush/drush/ | head -5 || echo "vendor/drush/drush directory not found"
+
+          # Try direct drush execution instead of wrapper
+          echo "=== Testing direct drush execution ==="
+          if [ -f "vendor/drush/drush/drush" ]; then
+            echo "Found direct drush executable, testing..."
+            php vendor/drush/drush/drush --version || echo "Direct drush version failed"
+            
+            # Use direct drush for installation
+            echo "=== Running site-install with direct drush ==="
+            set -x
+            php vendor/drush/drush/drush site-install standard \
+              --root="$(pwd)/web" \
+              --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
+              --account-name=admin \
+              --account-pass=admin \
+              --site-name="Drupal Test Site" \
+              --yes \
+              --verbose \
+              --debug || DRUSH_EXIT_CODE=$?
+            set +x
+          else
+            echo "Direct drush not found, trying wrapper with debugging..."
+            echo "Content of vendor/bin/drush:"
+            head -20 vendor/bin/drush || echo "Cannot read drush wrapper"
+            
+            # Try the wrapper with more debugging
+            echo "=== Running site-install with wrapper drush ==="
+            set -x
+            DRUSH_EXIT_CODE=0
+            php vendor/bin/drush site-install standard \
+              --root="$(pwd)/web" \
+              --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
+              --account-name=admin \
+              --account-pass=admin \
+              --site-name="Drupal Test Site" \
+              --yes \
+              --verbose \
+              --debug || DRUSH_EXIT_CODE=$?
+            set +x
           fi
 
-          echo "=== Installation completed, verifying ==="
+          # Check if installation succeeded
+          echo "=== Installation verification ==="
           if [ -f "web/sites/default/settings.php" ]; then
             echo "✓ settings.php created successfully"
+            echo "✓ Drupal installation completed"
+            
+            # Verify drush status now works
+            if [ -f "vendor/drush/drush/drush" ]; then
+              php vendor/drush/drush/drush --root="$(pwd)/web" status
+            else
+              php vendor/bin/drush --root="$(pwd)/web" status
+            fi
           else
             echo "✗ settings.php not found - installation failed"
+            echo "Directory contents:"
+            ls -la web/sites/default/
             exit 1
           fi
-
-          php vendor/bin/drush --root="$(pwd)/web" status
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
