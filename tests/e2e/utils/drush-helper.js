@@ -75,23 +75,29 @@ async function createAdminUser() {
       // User doesn't exist, which is fine
     }
 
-    // Also try to clear user 1 and recreate as our admin
+    // Try to create admin user with explicit UID 1 for super admin privileges
+    // UID 1 bypasses all permission checks in Drupal
     try {
-      await execDrush('user:cancel 1 --delete-content');
+      await execDrush(
+        'user:create admin --mail="admin@example.com" --password="admin" --uid=1',
+      );
     } catch (e) {
-      // User 1 might not exist or be deletable, which is fine
+      // If UID 1 is taken, create without UID specification
+      console.warn(
+        'Could not create user with UID 1, creating without:',
+        e.message,
+      );
+      await execDrush(
+        'user:create admin --mail="admin@example.com" --password="admin"',
+      );
     }
-
-    // Create admin user - try to get user ID 1 for super admin privileges
-    await execDrush(
-      'user:create admin --mail="admin@example.com" --password="admin"',
-    );
 
     // Add administrator role
     await execDrush('user:role:add administrator admin');
 
-    // Make sure the administrator role has all necessary permissions
+    // Make sure the administrator role has all necessary permissions for block management
     await execDrush('role:perm:add administrator "administer blocks"');
+    await execDrush('role:perm:add administrator "administer block layout"');
     await execDrush('role:perm:add administrator "administer themes"');
     await execDrush(
       'role:perm:add administrator "access administration pages"',
@@ -103,6 +109,8 @@ async function createAdminUser() {
     await execDrush(
       'role:perm:add administrator "administer site configuration"',
     );
+    await execDrush('role:perm:add administrator "use text format basic_html"');
+    await execDrush('role:perm:add administrator "use text format full_html"');
 
     console.log('Created admin user with comprehensive permissions');
   } catch (error) {
