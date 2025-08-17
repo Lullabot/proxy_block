@@ -86,16 +86,8 @@ async function createAdminUser() {
     // Since Drupal 10.3+, UID 1 bypass is disabled in CI environments
     // We need to explicitly grant ALL necessary permissions for block management
 
-    // First, discover what permissions are actually available
-    try {
-      const allPerms = await execDrush('role:perm:list --format=yaml');
-      console.log(
-        'Available permissions sample:',
-        allPerms.split('\n').slice(0, 20).join('\n'),
-      );
-    } catch (e) {
-      console.warn('Could not list permissions:', e.message);
-    }
+    // Note: drush doesn't have a role:perm:list command
+    // We'll just add the permissions we know exist
 
     // Core block and theme administration permissions
     await execDrush('role:perm:add administrator "administer blocks"');
@@ -162,22 +154,12 @@ async function createAdminUser() {
       console.warn('Could not get user info:', e.message);
     }
 
-    // Debug: Check what permissions the administrator role actually has
+    // Debug: Check roles (using role:list instead)
     try {
-      const rolePerms = await execDrush(
-        'role:perm:list administrator --format=yaml',
-      );
-      console.log('Administrator role permissions (YAML):', rolePerms);
+      const roleList = await execDrush('role:list --format=yaml');
+      console.log('Available roles:', roleList);
     } catch (e) {
-      console.warn('Could not get role permissions:', e.message);
-    }
-
-    // Debug: Try a specific permission check
-    try {
-      const permCheck = await execDrush('user:role:list admin --format=yaml');
-      console.log('Admin user roles (YAML):', permCheck);
-    } catch (e) {
-      console.warn('Could not check user roles:', e.message);
+      console.warn('Could not list roles:', e.message);
     }
 
     console.log('Created admin user with comprehensive permissions');
