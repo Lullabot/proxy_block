@@ -147,8 +147,19 @@ jobs:
 
           # Install Drupal with verbose output and error handling
           echo "=== Running drush site-install ==="
+          
+          # Check if drush is working at all
+          echo "Testing drush status before installation..."
+          php vendor/bin/drush --root="$(pwd)/web" status || echo "Drush status failed (expected before installation)"
+          
+          echo "Testing drush core requirements..."
+          php vendor/bin/drush --root="$(pwd)/web" core:requirements || echo "Core requirements check failed"
+          
+          # Run the actual installation with better error capture
+          echo "Starting site-install..."
           set -x # Enable verbose output
           
+          DRUSH_EXIT_CODE=0
           php vendor/bin/drush site-install standard \
             --root="$(pwd)/web" \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
@@ -156,15 +167,20 @@ jobs:
             --account-pass=admin \
             --site-name="Drupal Test Site" \
             --yes \
-            --verbose 2>&1 || {
-              echo "=== Drush installation failed, checking details ==="
-              echo "Exit code: $?"
-              echo "Directory contents:"
-              ls -la web/sites/default/
-              exit 1
-            }
+            --verbose || DRUSH_EXIT_CODE=$?
           
           set +x # Disable verbose output
+          
+          # Check if installation failed
+          if [ $DRUSH_EXIT_CODE -ne 0 ]; then
+            echo "=== Drush installation failed ==="
+            echo "Exit code: $DRUSH_EXIT_CODE"
+            echo "Directory contents:"
+            ls -la web/sites/default/
+            echo "Attempting to get more details..."
+            php vendor/bin/drush --root="$(pwd)/web" status || echo "Status check failed"
+            exit 1
+          fi
 
           echo "=== Installation completed, verifying ==="
           if [ -f "web/sites/default/settings.php" ]; then
