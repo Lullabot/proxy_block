@@ -235,13 +235,30 @@ class BlockPlacementPage {
    * Save the block configuration.
    */
   async saveBlock() {
-    // Find the specific save button for the block configuration modal
-    const saveButton = this.page
-      .locator('.ui-dialog input[value="Save block"]')
-      .first();
+    // Try multiple save button selectors for Drupal block forms
+    const saveSelectors = [
+      '.ui-dialog input[id*="edit-actions-submit"]',
+      '.ui-dialog input[value*="Save"]',
+      '.ui-dialog [data-drupal-selector*="edit-actions-submit"]',
+      '.ui-dialog .form-actions input[type="submit"]',
+      '.ui-dialog input[type="submit"]',
+    ];
 
-    // The save button MUST exist and be visible
-    await expect(saveButton).toBeVisible();
+    let saveButton = null;
+    for (const selector of saveSelectors) {
+      const button = this.page.locator(selector).first();
+      if (await button.isVisible()) {
+        saveButton = button;
+        break;
+      }
+    }
+
+    if (!saveButton) {
+      throw new Error(
+        'Could not find save button in block configuration dialog',
+      );
+    }
+
     await saveButton.click();
 
     await this.page.waitForLoadState('networkidle');
