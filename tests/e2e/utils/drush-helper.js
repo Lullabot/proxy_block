@@ -96,7 +96,6 @@ async function createAdminUser() {
     const blockLayoutPermissions = [
       'administer blocks', // This one exists
       'access block library', // Alternative
-      'use contextual links', // For block configuration
     ];
 
     for (const permission of blockLayoutPermissions) {

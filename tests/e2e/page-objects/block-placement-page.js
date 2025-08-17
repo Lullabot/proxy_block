@@ -210,8 +210,10 @@ class BlockPlacementPage {
    * @param {string} config.targetBlock - Target block plugin ID
    */
   async configureProxySettings(config = {}) {
-    // Look for target block selection dropdown
-    const targetBlockSelect = this.page.locator('#edit-settings-target-block');
+    // Look for target block selection dropdown (it's inside a fieldset)
+    const targetBlockSelect = this.page.locator(
+      '#edit-settings-target-block-id',
+    );
     if (await targetBlockSelect.isVisible()) {
       if (config.targetBlock) {
         await targetBlockSelect.selectOption(config.targetBlock);
