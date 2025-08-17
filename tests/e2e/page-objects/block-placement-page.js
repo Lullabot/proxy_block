@@ -53,6 +53,36 @@ class BlockPlacementPage {
    */
   async navigate(theme = 'olivero') {
     await this.page.goto(`/admin/structure/block/list/${theme}`);
+
+    // Debug: If we get "Access denied", capture the page content and logged-in status
+    const h1Text = await this.page.locator('h1').textContent();
+    if (h1Text && h1Text.includes('Access denied')) {
+      console.log('Access denied detected! Current page content:');
+      console.log('URL:', this.page.url());
+      console.log('H1 text:', h1Text);
+
+      // Check if we're actually logged in
+      const loggedInElements = await this.page
+        .locator('.toolbar, .user-logged-in, #toolbar-administration')
+        .count();
+      console.log('Logged in elements found:', loggedInElements);
+
+      // Check for any error messages
+      const errorMessages = await this.page
+        .locator('.messages--error, .error')
+        .textContent();
+      if (errorMessages) {
+        console.log('Error messages:', errorMessages);
+      }
+
+      // Get the full body content to understand what's happening
+      const bodyContent = await this.page.locator('body').textContent();
+      console.log(
+        'Body content (first 500 chars):',
+        bodyContent?.substring(0, 500),
+      );
+    }
+
     await expect(this.page.locator('h1')).toContainText('Block layout');
     await this.page.waitForLoadState('networkidle');
   }

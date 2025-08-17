@@ -37,13 +37,13 @@ async function execDrush(command) {
           0,
           currentDir.indexOf('web/modules/contrib/'),
         );
-        // Run drush from Drupal root using php (like main CI workflow)
-        drushCommand = `php vendor/bin/drush --root=web ${command}`;
+        // Use direct drush.php execution to avoid shell wrapper issues in CI
+        drushCommand = `php vendor/drush/drush/drush.php --root=web ${command}`;
         // Set working directory to the Drupal root (where vendor/ and composer.json are)
         workingDir = drupalRootPath;
       } else {
-        // Fallback: assume we're already at the Drupal root
-        drushCommand = `php vendor/bin/drush --root=web ${command}`;
+        // Fallback: assume we're already at the Drupal root - use direct drush.php
+        drushCommand = `php vendor/drush/drush/drush.php --root=web ${command}`;
         workingDir = currentDir;
       }
     }
@@ -141,18 +141,28 @@ async function createAdminUser() {
 
     // Debug: Check what user ID was actually created
     try {
-      const userInfo = await execDrush('user:information admin');
-      console.log('Admin user info:', userInfo);
+      const userInfo = await execDrush('user:information admin --format=yaml');
+      console.log('Admin user info (YAML):', userInfo);
     } catch (e) {
       console.warn('Could not get user info:', e.message);
     }
 
     // Debug: Check what permissions the administrator role actually has
     try {
-      const rolePerms = await execDrush('role:list --filter=administrator');
-      console.log('Administrator role permissions:', rolePerms);
+      const rolePerms = await execDrush(
+        'role:perm:list administrator --format=yaml',
+      );
+      console.log('Administrator role permissions (YAML):', rolePerms);
     } catch (e) {
       console.warn('Could not get role permissions:', e.message);
+    }
+
+    // Debug: Try a specific permission check
+    try {
+      const permCheck = await execDrush('user:role:list admin --format=yaml');
+      console.log('Admin user roles (YAML):', permCheck);
+    } catch (e) {
+      console.warn('Could not check user roles:', e.message);
     }
 
     console.log('Created admin user with comprehensive permissions');
