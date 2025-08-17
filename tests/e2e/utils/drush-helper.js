@@ -68,20 +68,43 @@ async function execDrush(command) {
  */
 async function createAdminUser() {
   try {
-    // Try to delete existing admin user first (ignore errors)
+    // Delete any existing admin user first
     try {
       await execDrush('user:cancel admin --delete-content');
     } catch (e) {
       // User doesn't exist, which is fine
     }
 
-    // Create admin user
+    // Also try to clear user 1 and recreate as our admin
+    try {
+      await execDrush('user:cancel 1 --delete-content');
+    } catch (e) {
+      // User 1 might not exist or be deletable, which is fine
+    }
+
+    // Create admin user - try to get user ID 1 for super admin privileges
     await execDrush(
       'user:create admin --mail="admin@example.com" --password="admin"',
     );
+
+    // Add administrator role
     await execDrush('user:role:add administrator admin');
 
-    console.log('Created admin user successfully');
+    // Make sure the administrator role has all necessary permissions
+    await execDrush('role:perm:add administrator "administer blocks"');
+    await execDrush('role:perm:add administrator "administer themes"');
+    await execDrush(
+      'role:perm:add administrator "access administration pages"',
+    );
+    await execDrush(
+      'role:perm:add administrator "view the administration theme"',
+    );
+    await execDrush('role:perm:add administrator "access content"');
+    await execDrush(
+      'role:perm:add administrator "administer site configuration"',
+    );
+
+    console.log('Created admin user with comprehensive permissions');
   } catch (error) {
     console.error('Failed to create admin user:', error);
     throw error;
