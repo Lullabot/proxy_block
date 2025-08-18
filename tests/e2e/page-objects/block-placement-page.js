@@ -93,6 +93,8 @@ class BlockPlacementPage {
    * @param {string} region - Region name (e.g., 'content', 'sidebar')
    */
   async clickPlaceBlockForRegion(region = 'content') {
+    console.log(`=== DEBUG: Clicking place block for region: ${region} ===`);
+
     // Find the "Place block in the [Region Name] region" link - it MUST exist
     const placeLink = this.page
       .locator('a')
@@ -106,9 +108,50 @@ class BlockPlacementPage {
 
     // The place block link MUST be found - if not, the test should fail
     await expect(placeLink).toBeVisible();
+
+    // Debug: Log the link we're about to click
+    const linkText = await placeLink.textContent();
+    const linkHref = await placeLink.getAttribute('href');
+    console.log(`Found place block link: "${linkText}" (href: ${linkHref})`);
+
     await placeLink.click();
+    console.log('Place block link clicked');
 
     await this.page.waitForLoadState('networkidle');
+    console.log('Page load completed after click');
+
+    // Debug: Check what actually happened after clicking
+    const currentUrl = this.page.url();
+    console.log(`Current URL after click: ${currentUrl}`);
+
+    // Check if we have any modals or dialogs
+    const dialogCount = await this.page.locator('.ui-dialog, .modal').count();
+    console.log(`Dialog/modal count: ${dialogCount}`);
+
+    // Check if we're on a new page instead of a modal
+    const pageH1 = await this.page.locator('h1').textContent();
+    console.log(`Page H1 after click: "${pageH1}"`);
+
+    // If no modal, check what content we actually have
+    if (dialogCount === 0) {
+      const bodyText = await this.page.locator('body').textContent();
+      console.log(
+        'No modal found. Page content (first 500 chars):',
+        bodyText?.substring(0, 500),
+      );
+
+      // Check if we're on the block library page instead
+      const isBlockLibrary = await this.page
+        .locator('h1:has-text("Place block")')
+        .count();
+      console.log(`On block library page: ${isBlockLibrary > 0}`);
+
+      if (isBlockLibrary > 0) {
+        console.log('We are on the block library page, not in a modal');
+        // This means the block placement is working, just not in a modal
+        return;
+      }
+    }
 
     // Check if modal dialog opened (which has the "Place block" title)
     const modalTitle = this.page.locator(
@@ -147,20 +190,45 @@ class BlockPlacementPage {
    * Click on Proxy Block to configure it.
    */
   async selectProxyBlock() {
+    console.log('=== DEBUG: Selecting Proxy Block ===');
+
     await this.searchForBlock('Proxy Block');
 
     // Look for Proxy Block link
     const proxyBlockLink = this.page.locator(this.selectors.proxyBlockLink);
     await expect(proxyBlockLink).toBeVisible();
+
+    // Debug: Log the proxy block link we're about to click
+    const linkText = await proxyBlockLink.textContent();
+    const linkHref = await proxyBlockLink.getAttribute('href');
+    console.log(`Found proxy block link: "${linkText}" (href: ${linkHref})`);
+
     await proxyBlockLink.click();
+    console.log('Proxy block link clicked');
 
     await this.page.waitForLoadState('networkidle');
+    console.log('Page load completed after proxy block selection');
+
+    // Debug: Check what happened after clicking proxy block
+    const currentUrl = this.page.url();
+    console.log(`Current URL after proxy block click: ${currentUrl}`);
+
+    // Check if we have any modals or dialogs
+    const dialogCount = await this.page.locator('.ui-dialog, .modal').count();
+    console.log(
+      `Dialog/modal count after proxy block selection: ${dialogCount}`,
+    );
+
+    // Check what page/content we have
+    const pageH1 = await this.page.locator('h1').textContent();
+    console.log(`Page H1 after proxy block selection: "${pageH1}"`);
 
     // Check for either modal or full page configuration
     const configTitle = this.page.locator(
       '.ui-dialog-title:has-text("Configure"), h1:has-text("Configure")',
     );
     await expect(configTitle).toContainText('Configure');
+    console.log('Successfully found configure title');
   }
 
   /**
@@ -235,101 +303,138 @@ class BlockPlacementPage {
    * Save the block configuration.
    */
   async saveBlock() {
-    // Debug: Check what's actually in the dialog
-    console.log('=== Debugging save button issue ===');
+    console.log('=== DEBUG: Saving block configuration ===');
 
-    // Wait for dialog to be fully loaded
-    await this.page.waitForSelector('.ui-dialog', { timeout: 10000 });
+    // First, determine if we're in a modal or on a full page
+    const isModal = (await this.page.locator('.ui-dialog').count()) > 0;
+    console.log(`Configuration is in modal: ${isModal}`);
 
-    // Get all dialog content for debugging
-    const dialogHtml = await this.page.locator('.ui-dialog').innerHTML();
-    console.log(
-      'Dialog HTML (first 1000 chars):',
-      dialogHtml.substring(0, 1000),
-    );
+    if (isModal) {
+      console.log('Handling modal-based configuration');
 
-    // Check if there are any buttons at all
-    const allButtons = await this.page
-      .locator(
-        '.ui-dialog button, .ui-dialog input[type="submit"], .ui-dialog input[type="button"]',
-      )
-      .all();
-    console.log('Found buttons count:', allButtons.length);
-
-    for (let i = 0; i < allButtons.length; i++) {
-      const btn = allButtons[i];
-      const text = await btn.textContent();
-      const value = await btn.getAttribute('value');
-      const id = await btn.getAttribute('id');
-      const classes = await btn.getAttribute('class');
+      // Get all dialog content for debugging
+      const dialogHtml = await this.page.locator('.ui-dialog').innerHTML();
       console.log(
-        `Button ${i}: text="${text}", value="${value}", id="${id}", classes="${classes}"`,
+        'Dialog HTML (first 1000 chars):',
+        dialogHtml.substring(0, 1000),
       );
-    }
 
-    // Try multiple save button selectors for Drupal block forms
-    const saveSelectors = [
-      '.ui-dialog input[id*="edit-actions-submit"]',
-      '.ui-dialog input[value*="Save"]',
-      '.ui-dialog [data-drupal-selector*="edit-actions-submit"]',
-      '.ui-dialog .form-actions input[type="submit"]',
-      '.ui-dialog input[type="submit"]',
-      '.ui-dialog button[type="submit"]',
-      '.ui-dialog button:has-text("Save")',
-      '.ui-dialog input:has-text("Save")',
-    ];
-
-    let saveButton = null;
-    for (const selector of saveSelectors) {
-      const button = this.page.locator(selector).first();
-      if (await button.isVisible()) {
-        console.log(`Found save button with selector: ${selector}`);
-        saveButton = button;
-        break;
-      }
-    }
-
-    if (!saveButton) {
-      // Last resort: just click the first submit button
-      const firstSubmit = this.page
+      // Check if there are any buttons at all in the modal
+      const allButtons = await this.page
         .locator(
-          '.ui-dialog input[type="submit"], .ui-dialog button[type="submit"]',
+          '.ui-dialog button, .ui-dialog input[type="submit"], .ui-dialog input[type="button"]',
         )
-        .first();
-      if (await firstSubmit.isVisible()) {
-        console.log('Using first submit button as fallback');
-        saveButton = firstSubmit;
+        .all();
+      console.log('Found buttons in modal:', allButtons.length);
+
+      for (let i = 0; i < allButtons.length; i++) {
+        const btn = allButtons[i];
+        const text = await btn.textContent();
+        const value = await btn.getAttribute('value');
+        const id = await btn.getAttribute('id');
+        const classes = await btn.getAttribute('class');
+        console.log(
+          `Modal Button ${i}: text="${text}", value="${value}", id="${id}", classes="${classes}"`,
+        );
       }
-    }
 
-    if (!saveButton) {
-      throw new Error(
-        'Could not find any save/submit button in block configuration dialog',
+      // Try multiple save button selectors for modal
+      const modalSaveSelectors = [
+        '.ui-dialog input[id*="edit-actions-submit"]',
+        '.ui-dialog input[value*="Save"]',
+        '.ui-dialog [data-drupal-selector*="edit-actions-submit"]',
+        '.ui-dialog .form-actions input[type="submit"]',
+        '.ui-dialog input[type="submit"]',
+        '.ui-dialog button[type="submit"]',
+      ];
+
+      let saveButton = null;
+      for (const selector of modalSaveSelectors) {
+        const button = this.page.locator(selector).first();
+        if (await button.isVisible()) {
+          console.log(`Found modal save button with selector: ${selector}`);
+          saveButton = button;
+          break;
+        }
+      }
+
+      if (!saveButton) {
+        throw new Error('Could not find save button in modal configuration');
+      }
+
+      await saveButton.click();
+      console.log('Modal save button clicked');
+
+      // Wait for modal to close
+      await this.page.waitForFunction(
+        () => {
+          const modals = document.querySelectorAll('.ui-dialog, .modal');
+          return modals.length === 0;
+        },
+        { timeout: 10000 },
       );
-    }
+      console.log('Modal closed successfully');
+    } else {
+      console.log('Handling full-page configuration');
 
-    await saveButton.click();
+      // Check if there are any buttons at all on the page
+      const allButtons = await this.page
+        .locator('button, input[type="submit"], input[type="button"]')
+        .all();
+      console.log('Found buttons on page:', allButtons.length);
+
+      for (let i = 0; i < Math.min(allButtons.length, 10); i++) {
+        const btn = allButtons[i];
+        const text = await btn.textContent();
+        const value = await btn.getAttribute('value');
+        const id = await btn.getAttribute('id');
+        const classes = await btn.getAttribute('class');
+        console.log(
+          `Page Button ${i}: text="${text}", value="${value}", id="${id}", classes="${classes}"`,
+        );
+      }
+
+      // Try multiple save button selectors for full page
+      const pageSaveSelectors = [
+        'input[id*="edit-actions-submit"]',
+        'input[value*="Save"]',
+        '[data-drupal-selector*="edit-actions-submit"]',
+        '.form-actions input[type="submit"]',
+        'input[type="submit"]',
+        'button[type="submit"]',
+      ];
+
+      let saveButton = null;
+      for (const selector of pageSaveSelectors) {
+        const button = this.page.locator(selector).first();
+        if (await button.isVisible()) {
+          console.log(`Found page save button with selector: ${selector}`);
+          saveButton = button;
+          break;
+        }
+      }
+
+      if (!saveButton) {
+        throw new Error('Could not find save button on configuration page');
+      }
+
+      await saveButton.click();
+      console.log('Page save button clicked');
+    }
 
     // Wait for the form submission to complete
     await this.page.waitForLoadState('networkidle');
-    console.log('Save button clicked and page loaded');
-
-    // Wait for modal to close and return to block layout
-    await this.page.waitForFunction(
-      () => {
-        const modals = document.querySelectorAll('.ui-dialog, .modal');
-        return modals.length === 0;
-      },
-      { timeout: 10000 },
-    );
+    console.log('Form submission completed');
 
     // Should be back on block layout page
     await expect(
       this.page.locator('h1:has-text("Block layout")'),
     ).toBeVisible();
+    console.log('Successfully returned to block layout page');
 
     // Check for success message
     await expect(this.page.locator('.messages--status')).toBeVisible();
+    console.log('Success message found');
   }
 
   /**
