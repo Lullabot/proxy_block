@@ -110,13 +110,19 @@ class BlockPlacementPage {
     }
 
     // Find the "Place block in the [Region Name] region" link - it MUST exist
+    // Be specific to avoid matching "Content Above" when looking for "Content"
+    const regionPattern =
+      region.toLowerCase() === 'content'
+        ? /Place block in the Content region$/i // Exact match for "Content region"
+        : new RegExp(
+            `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
+            'i',
+          );
+
     const placeLink = this.page
       .locator('a')
       .filter({
-        hasText: /Place block in the .* region/,
-      })
-      .filter({
-        hasText: new RegExp(region, 'i'),
+        hasText: regionPattern,
       })
       .first();
 
@@ -410,13 +416,50 @@ class BlockPlacementPage {
    * @param {string} region - The region where the block should be placed
    */
   async verifyBlockPlaced(blockTitle, region = 'content') {
+    console.log(
+      `=== DEBUG: Verifying block placed: "${blockTitle}" in region: "${region}" ===`,
+    );
+
     // Look for the block in the block layout table
     // Since the layout doesn't use data-region attributes, search for the block by title
     // and verify it shows the correct region in the "Region" column
 
+    // Debug: First let's see what rows are actually in the table
+    const allRows = await this.page.locator('tbody tr').all();
+    console.log(`Found ${allRows.length} rows in block layout table:`);
+
+    for (let i = 0; i < Math.min(allRows.length, 10); i++) {
+      const rowText = await allRows[i].textContent();
+      console.log(`  Row ${i + 1}: "${rowText?.trim()}"`);
+    }
+
     const blockRows = this.page
       .locator('tbody tr')
       .filter({ hasText: blockTitle });
+
+    console.log(`Looking for rows containing: "${blockTitle}"`);
+    const matchingRowCount = await blockRows.count();
+    console.log(`Found ${matchingRowCount} rows matching block title`);
+
+    if (matchingRowCount === 0) {
+      // Debug: Try a partial match
+      const partialMatch = this.page
+        .locator('tbody tr')
+        .filter({ hasText: blockTitle.split(' ')[0] });
+      const partialCount = await partialMatch.count();
+      console.log(
+        `Found ${partialCount} rows with partial match on "${blockTitle.split(' ')[0]}"`,
+      );
+
+      if (partialCount > 0) {
+        const partialRows = await partialMatch.all();
+        for (let i = 0; i < Math.min(partialRows.length, 3); i++) {
+          const rowText = await partialRows[i].textContent();
+          console.log(`  Partial match ${i + 1}: "${rowText?.trim()}"`);
+        }
+      }
+    }
+
     await expect(blockRows.first()).toBeVisible();
 
     // Verify the region is correct by checking the Region column
