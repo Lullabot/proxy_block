@@ -235,6 +235,38 @@ class BlockPlacementPage {
    * Save the block configuration.
    */
   async saveBlock() {
+    // Debug: Check what's actually in the dialog
+    console.log('=== Debugging save button issue ===');
+
+    // Wait for dialog to be fully loaded
+    await this.page.waitForSelector('.ui-dialog', { timeout: 10000 });
+
+    // Get all dialog content for debugging
+    const dialogHtml = await this.page.locator('.ui-dialog').innerHTML();
+    console.log(
+      'Dialog HTML (first 1000 chars):',
+      dialogHtml.substring(0, 1000),
+    );
+
+    // Check if there are any buttons at all
+    const allButtons = await this.page
+      .locator(
+        '.ui-dialog button, .ui-dialog input[type="submit"], .ui-dialog input[type="button"]',
+      )
+      .all();
+    console.log('Found buttons count:', allButtons.length);
+
+    for (let i = 0; i < allButtons.length; i++) {
+      const btn = allButtons[i];
+      const text = await btn.textContent();
+      const value = await btn.getAttribute('value');
+      const id = await btn.getAttribute('id');
+      const classes = await btn.getAttribute('class');
+      console.log(
+        `Button ${i}: text="${text}", value="${value}", id="${id}", classes="${classes}"`,
+      );
+    }
+
     // Try multiple save button selectors for Drupal block forms
     const saveSelectors = [
       '.ui-dialog input[id*="edit-actions-submit"]',
@@ -242,26 +274,45 @@ class BlockPlacementPage {
       '.ui-dialog [data-drupal-selector*="edit-actions-submit"]',
       '.ui-dialog .form-actions input[type="submit"]',
       '.ui-dialog input[type="submit"]',
+      '.ui-dialog button[type="submit"]',
+      '.ui-dialog button:has-text("Save")',
+      '.ui-dialog input:has-text("Save")',
     ];
 
     let saveButton = null;
     for (const selector of saveSelectors) {
       const button = this.page.locator(selector).first();
       if (await button.isVisible()) {
+        console.log(`Found save button with selector: ${selector}`);
         saveButton = button;
         break;
       }
     }
 
     if (!saveButton) {
+      // Last resort: just click the first submit button
+      const firstSubmit = this.page
+        .locator(
+          '.ui-dialog input[type="submit"], .ui-dialog button[type="submit"]',
+        )
+        .first();
+      if (await firstSubmit.isVisible()) {
+        console.log('Using first submit button as fallback');
+        saveButton = firstSubmit;
+      }
+    }
+
+    if (!saveButton) {
       throw new Error(
-        'Could not find save button in block configuration dialog',
+        'Could not find any save/submit button in block configuration dialog',
       );
     }
 
     await saveButton.click();
 
+    // Wait for the form submission to complete
     await this.page.waitForLoadState('networkidle');
+    console.log('Save button clicked and page loaded');
 
     // Wait for modal to close and return to block layout
     await this.page.waitForFunction(
