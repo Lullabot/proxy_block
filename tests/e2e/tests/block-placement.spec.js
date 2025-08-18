@@ -78,13 +78,13 @@ test.describe('Proxy Block Configuration', () => {
   });
 
   test('should find and select Proxy Block', async ({ page }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
-    // Should be on block configuration page (in modal)
-    await expect(
-      page.locator('.ui-dialog-title, h1:has-text("Configure")'),
-    ).toContainText('Configure block');
+    // Should be on block configuration page (full page, not modal)
+    await expect(page.locator('h1:has-text("Configure")')).toContainText(
+      'Configure block',
+    );
 
     // Verify we're configuring a proxy block - look for the Target Block selection (unique to proxy block)
     const targetBlockField = page.locator(
@@ -94,13 +94,13 @@ test.describe('Proxy Block Configuration', () => {
   });
 
   test('should configure basic proxy block settings', async ({ page }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     const blockConfig = {
       title: `Test Proxy Block ${Date.now()}`,
       displayTitle: true,
-      region: 'content',
+      region: 'content_above',
     };
 
     const savedConfig =
@@ -113,7 +113,7 @@ test.describe('Proxy Block Configuration', () => {
   });
 
   test('should configure proxy block with target block', async ({ page }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     // Configure basic settings
@@ -131,14 +131,14 @@ test.describe('Proxy Block Configuration', () => {
   test('should save proxy block configuration successfully', async ({
     page,
   }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     const blockTitle = `Test Proxy Block ${Date.now()}`;
 
     await blockPlacementPage.configureBasicSettings({
       title: blockTitle,
-      region: 'content',
+      region: 'content_above',
     });
 
     await blockPlacementPage.configureProxySettings({
@@ -156,7 +156,7 @@ test.describe('Proxy Block Configuration', () => {
     await expect(page.locator('.messages--status')).toBeVisible();
 
     // Verify block appears in the layout
-    await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
+    await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content_above');
   });
 
   test('should handle proxy block configuration with multiple target blocks', async ({
@@ -169,13 +169,13 @@ test.describe('Proxy Block Configuration', () => {
       const blockTitle = `${config.name} ${Date.now()}`;
 
       // Place new block
-      await blockPlacementPage.clickPlaceBlockForRegion('content');
+      await blockPlacementPage.clickPlaceBlockForRegion('content_above');
       await blockPlacementPage.selectProxyBlock();
 
       // Configure the block
       await blockPlacementPage.configureBasicSettings({
         title: blockTitle,
-        region: 'content',
+        region: 'content_above',
       });
 
       await blockPlacementPage.configureProxySettings({
@@ -185,12 +185,12 @@ test.describe('Proxy Block Configuration', () => {
       await blockPlacementPage.saveBlock();
 
       // Verify block was placed
-      await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
+      await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content_above');
     }
   });
 
   test('should cancel proxy block configuration', async ({ page }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     await blockPlacementPage.configureBasicSettings({
@@ -214,7 +214,7 @@ test.describe('Proxy Block Configuration', () => {
   test('should validate required fields in proxy block configuration', async ({
     page,
   }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     // Try to save without filling required fields
@@ -222,9 +222,9 @@ test.describe('Proxy Block Configuration', () => {
     await saveButton.click();
 
     // Should still be on configuration page with validation errors
-    await expect(
-      page.locator('.ui-dialog-title, h1:has-text("Configure")'),
-    ).toContainText('Configure block');
+    await expect(page.locator('h1:has-text("Configure")')).toContainText(
+      'Configure block',
+    );
 
     // Validation messages MUST appear when required fields are not filled
     const validationMessages = page.locator(
@@ -236,7 +236,7 @@ test.describe('Proxy Block Configuration', () => {
   test('should test AJAX functionality in proxy block configuration', async ({
     page,
   }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     // Configure basic settings first
@@ -261,7 +261,7 @@ test.describe('Proxy Block Configuration', () => {
 
   test('should remove placed proxy block', async ({ page }) => {
     // First, place a block
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.clickPlaceBlockForRegion('content_above');
     await blockPlacementPage.selectProxyBlock();
 
     const blockTitle = `Block to Remove ${Date.now()}`;
@@ -270,7 +270,7 @@ test.describe('Proxy Block Configuration', () => {
     });
 
     await blockPlacementPage.saveBlock();
-    await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
+    await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content_above');
 
     // Now remove the block
     await blockPlacementPage.removeBlock(blockTitle);
@@ -285,7 +285,7 @@ test.describe('Proxy Block Configuration', () => {
   test('should verify block placement across different regions', async ({
     page,
   }) => {
-    const regions = ['content', 'header'];
+    const regions = ['content_above', 'header'];
 
     for (const region of regions) {
       // Check if region exists
