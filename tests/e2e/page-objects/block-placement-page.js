@@ -95,6 +95,20 @@ class BlockPlacementPage {
   async clickPlaceBlockForRegion(region = 'content') {
     console.log(`=== DEBUG: Clicking place block for region: ${region} ===`);
 
+    // First, let's debug what regions are actually available
+    const allPlaceLinks = await this.page
+      .locator('a')
+      .filter({
+        hasText: /Place block in the .* region/,
+      })
+      .all();
+
+    console.log(`Found ${allPlaceLinks.length} place block links:`);
+    for (let i = 0; i < allPlaceLinks.length; i++) {
+      const linkText = await allPlaceLinks[i].textContent();
+      console.log(`  ${i + 1}. "${linkText}"`);
+    }
+
     // Find the "Place block in the [Region Name] region" link - it MUST exist
     const placeLink = this.page
       .locator('a')
@@ -238,7 +252,7 @@ class BlockPlacementPage {
   async configureBasicSettings(config = {}) {
     const title = config.title || `Test Proxy Block ${Date.now()}`;
     const displayTitle = config.displayTitle !== false; // Default to true
-    const region = config.region || 'content_above';
+    const region = config.region || 'content';
 
     // Fill block title
     const titleField = this.page.locator(this.selectors.blockTitleField);
@@ -395,7 +409,7 @@ class BlockPlacementPage {
    * @param {string} blockTitle - The title of the block to verify
    * @param {string} region - The region where the block should be placed
    */
-  async verifyBlockPlaced(blockTitle, region = 'content_above') {
+  async verifyBlockPlaced(blockTitle, region = 'content') {
     // Look for the block in the block layout table
     // Since the layout doesn't use data-region attributes, search for the block by title
     // and verify it shows the correct region in the "Region" column
