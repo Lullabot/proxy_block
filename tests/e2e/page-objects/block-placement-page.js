@@ -450,7 +450,9 @@ class BlockPlacementPage {
     const isProxyBlock =
       blockTitle.toLowerCase().includes('proxy') ||
       blockTitle.toLowerCase().includes('test') ||
-      blockTitle.toLowerCase().includes('simple');
+      blockTitle.toLowerCase().includes('simple') ||
+      blockTitle.toLowerCase().includes('remove') ||
+      blockTitle.toLowerCase().includes('block');
     const searchText = isProxyBlock ? 'Proxy Block' : blockTitle;
 
     console.log(`Searching for block with text: "${searchText}"`);
