@@ -380,16 +380,18 @@ class BlockPlacementPage {
 
     // Check for success message (with fallback for different Drupal versions)
     try {
-      await expect(this.page.locator('.messages--status')).toBeVisible({ timeout: 5000 });
+      await expect(this.page.locator('.messages--status')).toBeVisible({
+        timeout: 5000,
+      });
     } catch (error) {
       // Fallback: Check for alternative success message selectors or just verify we're on the right page
       const alternativeSelectors = [
         '.messages.status',
-        '.messages.messages--status', 
+        '.messages.messages--status',
         '.messages',
-        '[data-drupal-messages]'
+        '[data-drupal-messages]',
       ];
-      
+
       let found = false;
       for (const selector of alternativeSelectors) {
         const element = this.page.locator(selector);
@@ -399,11 +401,13 @@ class BlockPlacementPage {
           break;
         }
       }
-      
+
       if (!found) {
         // If no success message found, at least verify we're still on the block layout page
         // which indicates the save worked
-        console.log('No success message found, but form submission completed successfully');
+        console.log(
+          'No success message found, but form submission completed successfully',
+        );
         await expect(this.page.locator('h1')).toContainText('Block layout');
       }
     }

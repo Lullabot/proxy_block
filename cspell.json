@@ -29,5 +29,13 @@
     "Devel",
     "Symfony"
   ],
-  "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "vendor/**",
+    "*.min.*",
+    "ci-artifacts/**",
+    "playwright-report/**",
+    "test-results/**"
+  ]
 }
