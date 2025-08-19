@@ -319,7 +319,7 @@ test.describe('Proxy Block Rendering', () => {
     for (const region of regions) {
       // Check if region exists in theme by looking for place block link
       await blockPlacementPage.navigate(ENVIRONMENT.theme);
-      
+
       const regionPattern =
         region.toLowerCase() === 'content'
           ? /Place block in the Content region$/i
