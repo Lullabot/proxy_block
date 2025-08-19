@@ -322,12 +322,26 @@ test.describe('Proxy Block Configuration', () => {
   test('should verify block placement across different regions', async ({
     page,
   }) => {
-    const regions = ['content', 'header'];
+    const regions = ['content', 'sidebar'];
 
     for (const region of regions) {
-      // Check if region exists
-      const regionRow = page.locator(`tr[data-region="${region}"]`);
-      if ((await regionRow.count()) === 0) {
+      // Check if region exists by looking for place block link
+      const regionPattern =
+        region.toLowerCase() === 'content'
+          ? /Place block in the Content region$/i
+          : new RegExp(
+              `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
+              'i',
+            );
+
+      const placeLink = page
+        .locator('a')
+        .filter({
+          hasText: regionPattern,
+        })
+        .first();
+
+      if ((await placeLink.count()) === 0) {
         console.log(
           `Region ${region} not available in ${ENVIRONMENT.theme} theme`,
         );
