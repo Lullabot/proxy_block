@@ -399,22 +399,25 @@ class BlockPlacementPage {
     } else {
       // For full-page forms, look for various cancel button selectors
       const cancelSelectors = [
-        'a:has-text("Cancel")',  // Cancel link
-        'button:has-text("Cancel")',  // Cancel button
-        '.form-cancel',  // Cancel button with class
-        'input[value="Cancel"]',  // Input button with Cancel value
+        'a:has-text("Cancel")', // Cancel link
+        'button:has-text("Cancel")', // Cancel button
+        '.form-cancel', // Cancel button with class
+        'input[value="Cancel"]', // Input button with Cancel value
       ];
-      
+
       let cancelClicked = false;
       for (const selector of cancelSelectors) {
         const cancelButton = this.page.locator(selector).first();
-        if ((await cancelButton.count()) > 0 && (await cancelButton.isVisible())) {
+        if (
+          (await cancelButton.count()) > 0 &&
+          (await cancelButton.isVisible())
+        ) {
           await cancelButton.click();
           cancelClicked = true;
           break;
         }
       }
-      
+
       if (!cancelClicked) {
         // Last resort: go back to block layout page directly
         console.log('Cancel button not found, navigating back to block layout');
@@ -444,11 +447,12 @@ class BlockPlacementPage {
     // Look for the block in the block layout table
     // Note: Drupal's block list shows the plugin name ("Proxy Block"), not the custom title
     // For Proxy Blocks, we'll look for "Proxy Block" text in the table
-    const isProxyBlock = blockTitle.toLowerCase().includes('proxy') || 
-                         blockTitle.toLowerCase().includes('test') ||
-                         blockTitle.toLowerCase().includes('simple');
+    const isProxyBlock =
+      blockTitle.toLowerCase().includes('proxy') ||
+      blockTitle.toLowerCase().includes('test') ||
+      blockTitle.toLowerCase().includes('simple');
     const searchText = isProxyBlock ? 'Proxy Block' : blockTitle;
-    
+
     console.log(`Searching for block with text: "${searchText}"`);
 
     // Find rows that contain the target block
@@ -461,7 +465,7 @@ class BlockPlacementPage {
 
     const matchingRowCount = await blockRows.count();
     console.log(`Found ${matchingRowCount} rows matching "${searchText}"`);
-    
+
     // For debugging, show first few matching rows
     if (matchingRowCount > 0) {
       const matches = await blockRows.all();

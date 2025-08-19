@@ -221,35 +221,45 @@ test.describe('Proxy Block Configuration', () => {
     // Try to save without filling required fields
     const saveButton = page.locator('#edit-submit, .form-submit');
     await saveButton.click();
-    
+
     // Wait for page to process the form submission
     await page.waitForLoadState('networkidle');
 
     // Should either stay on configuration page OR show validation errors
     // First check if we're still on a form page (either Configure or Place)
-    const configPageLocator = page.locator('h1').filter({ hasText: /Configure|Place/ });
+    const configPageLocator = page
+      .locator('h1')
+      .filter({ hasText: /Configure|Place/ });
     const isOnConfigPage = (await configPageLocator.count()) > 0;
-    
+
     if (isOnConfigPage) {
       // Great! Still on config page, look for validation errors
       await expect(configPageLocator).toBeVisible();
     } else {
       // Form might have redirected, check if there are error messages anywhere
-      const errorMessages = page.locator('.messages--error, .form-item--error-message, .error');
+      const errorMessages = page.locator(
+        '.messages--error, .form-item--error-message, .error',
+      );
       const hasErrors = (await errorMessages.count()) > 0;
-      
+
       if (!hasErrors) {
         // If no obvious errors, the form might have different validation behavior
         // Let's check if we're on block layout page and look for any messages
-        const blockLayoutPage = page.locator('h1').filter({ hasText: /Block layout/ });
+        const blockLayoutPage = page
+          .locator('h1')
+          .filter({ hasText: /Block layout/ });
         const isOnBlockLayout = (await blockLayoutPage.count()) > 0;
-        
+
         if (isOnBlockLayout) {
-          console.log('Form redirected to block layout - validation may have different behavior');
+          console.log(
+            'Form redirected to block layout - validation may have different behavior',
+          );
         } else {
           // Unexpected page - log for debugging
           const currentH1 = await page.locator('h1').first().textContent();
-          console.log(`Unexpected page after validation test. H1: "${currentH1}"`);
+          console.log(
+            `Unexpected page after validation test. H1: "${currentH1}"`,
+          );
         }
       } else {
         // Found error messages, validation is working
