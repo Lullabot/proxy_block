@@ -332,8 +332,12 @@ test.describe('Proxy Block Configuration', () => {
       } else if (region.toLowerCase() === 'content_below') {
         regionPattern = /Place block in the Content Below region$/i;
       } else {
+        // Convert region machine name to display name for pattern matching
+        const displayRegion = region
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
         regionPattern = new RegExp(
-          `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
+          `Place block in the .* ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
           'i',
         );
       }

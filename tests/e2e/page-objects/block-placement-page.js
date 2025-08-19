@@ -111,13 +111,21 @@ class BlockPlacementPage {
 
     // Find the "Place block in the [Region Name] region" link - it MUST exist
     // Be specific to avoid matching "Content Above" when looking for "Content"
-    const regionPattern =
-      region.toLowerCase() === 'content'
-        ? /Place block in the Content region$/i // Exact match for "Content region"
-        : new RegExp(
-            `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
-            'i',
-          );
+    let regionPattern;
+    if (region.toLowerCase() === 'content') {
+      regionPattern = /Place block in the Content region$/i; // Exact match for "Content region"
+    } else if (region.toLowerCase() === 'content_below') {
+      regionPattern = /Place block in the Content Below region$/i; // Exact match for "Content Below region"
+    } else {
+      // Convert region machine name to display name for pattern matching
+      const displayRegion = region
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+      regionPattern = new RegExp(
+        `Place block in the .* ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
+        'i',
+      );
+    }
 
     const placeLink = this.page
       .locator('a')
