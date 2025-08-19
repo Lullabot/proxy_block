@@ -82,9 +82,10 @@ test.describe('Proxy Block Configuration', () => {
     await blockPlacementPage.selectProxyBlock();
 
     // Should be on block configuration page (full page, not modal)
-    await expect(page.locator('h1:has-text("Configure")')).toContainText(
-      'Configure block',
-    );
+    // In Drupal, this could be either "Configure block" or "Place block"
+    await expect(
+      page.locator('h1').filter({ hasText: /Configure|Place/ }),
+    ).toBeVisible();
 
     // Verify we're configuring a proxy block - look for the Target Block selection (unique to proxy block)
     const targetBlockField = page.locator(
@@ -222,9 +223,9 @@ test.describe('Proxy Block Configuration', () => {
     await saveButton.click();
 
     // Should still be on configuration page with validation errors
-    await expect(page.locator('h1:has-text("Configure")')).toContainText(
-      'Configure block',
-    );
+    await expect(
+      page.locator('h1').filter({ hasText: /Configure|Place/ }),
+    ).toBeVisible();
 
     // Validation messages MUST appear when required fields are not filled
     const validationMessages = page.locator(
