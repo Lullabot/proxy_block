@@ -314,19 +314,23 @@ test.describe('Proxy Block Rendering', () => {
   });
 
   test('should render proxy block in different regions', async ({ page }) => {
-    const regions = ['content', 'sidebar'];
+    const regions = ['content', 'content_below'];
 
     for (const region of regions) {
       // Check if region exists in theme by looking for place block link
       await blockPlacementPage.navigate(ENVIRONMENT.theme);
 
-      const regionPattern =
-        region.toLowerCase() === 'content'
-          ? /Place block in the Content region$/i
-          : new RegExp(
-              `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
-              'i',
-            );
+      let regionPattern;
+      if (region.toLowerCase() === 'content') {
+        regionPattern = /Place block in the Content region$/i;
+      } else if (region.toLowerCase() === 'content_below') {
+        regionPattern = /Place block in the Content Below region$/i;
+      } else {
+        regionPattern = new RegExp(
+          `Place block in the .* ${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
+          'i',
+        );
+      }
 
       const placeLink = page
         .locator('a')
