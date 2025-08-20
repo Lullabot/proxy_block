@@ -322,52 +322,50 @@ test.describe('Proxy Block Configuration', () => {
   test('should verify block placement across different regions', async ({
     page,
   }) => {
-    const regions = ['content', 'content_below'];
+    // Discover available regions by finding all place block links
+    const allPlaceLinks = await page
+      .locator('a')
+      .filter({
+        hasText: /Place block in the .* region$/i,
+      })
+      .all();
 
-    for (const region of regions) {
-      // Check if region exists by looking for place block link
-      let regionPattern;
-      if (region.toLowerCase() === 'content') {
-        regionPattern = /Place block in the Content region$/i;
-      } else if (region.toLowerCase() === 'content_below') {
-        regionPattern = /Place block in the Content Below region$/i;
-      } else {
-        // Convert region machine name to display name for pattern matching
-        const displayRegion = region
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase());
-        regionPattern = new RegExp(
-          `Place block in the .* ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
-          'i',
-        );
+    // Extract region names from the first few place block links (test 2 regions max)
+    const availableRegions = [];
+    for (let i = 0; i < Math.min(allPlaceLinks.length, 2); i++) {
+      const linkText = await allPlaceLinks[i].textContent();
+      const match = linkText?.match(/Place block in the (.*) region$/i);
+      if (match) {
+        const regionDisplayName = match[1];
+        // Convert display name to machine name for testing
+        const regionMachineName = regionDisplayName
+          .toLowerCase()
+          .replace(/ /g, '_');
+        availableRegions.push({
+          machine: regionMachineName,
+          display: regionDisplayName,
+        });
       }
+    }
 
-      const placeLink = page
-        .locator('a')
-        .filter({
-          hasText: regionPattern,
-        })
-        .first();
+    expect(availableRegions.length).toBeGreaterThan(0);
 
-      if ((await placeLink.count()) === 0) {
-        console.log(
-          `Region ${region} not available in ${ENVIRONMENT.theme} theme`,
-        );
-        continue;
-      }
+    for (const regionInfo of availableRegions) {
+      const blockTitle = `Block in ${regionInfo.display} ${Date.now()}`;
 
-      const blockTitle = `Block in ${region} ${Date.now()}`;
-
-      await blockPlacementPage.clickPlaceBlockForRegion(region);
+      await blockPlacementPage.clickPlaceBlockForRegion(regionInfo.machine);
       await blockPlacementPage.selectProxyBlock();
 
       await blockPlacementPage.configureBasicSettings({
         title: blockTitle,
-        region,
+        region: regionInfo.machine,
       });
 
       await blockPlacementPage.saveBlock();
-      await blockPlacementPage.verifyBlockPlaced(blockTitle, region);
+      await blockPlacementPage.verifyBlockPlaced(
+        blockTitle,
+        regionInfo.machine,
+      );
     }
   });
 });

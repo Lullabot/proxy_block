@@ -110,22 +110,16 @@ class BlockPlacementPage {
     }
 
     // Find the "Place block in the [Region Name] region" link - it MUST exist
-    // Be specific to avoid matching "Content Above" when looking for "Content"
-    let regionPattern;
-    if (region.toLowerCase() === 'content') {
-      regionPattern = /Place block in the Content region$/i; // Exact match for "Content region"
-    } else if (region.toLowerCase() === 'content_below') {
-      regionPattern = /Place block in the Content Below region$/i; // Exact match for "Content Below region"
-    } else {
-      // Convert region machine name to display name for pattern matching
-      const displayRegion = region
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-      regionPattern = new RegExp(
-        `Place block in the .* ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
-        'i',
-      );
-    }
+    // Convert region machine name to display name for pattern matching
+    const displayRegion = region
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    // Create exact pattern to match the region
+    const regionPattern = new RegExp(
+      `Place block in the ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region$`,
+      'i',
+    );
 
     const placeLink = this.page
       .locator('a')
@@ -386,47 +380,14 @@ class BlockPlacementPage {
     ).toBeVisible();
     console.log('Successfully returned to block layout page');
 
-    // Check for success message (with fallback for different Drupal versions)
-    try {
-      await expect(this.page.locator('.messages--status')).toBeVisible({
-        timeout: 3000,
-      });
-      console.log('Success message found');
-    } catch (error) {
-      // Fallback: Check for alternative success message selectors
-      const alternativeSelectors = [
-        '.messages.status',
-        '.messages.messages--status',
-        '.messages',
-        '[data-drupal-messages]',
-      ];
-
-      let found = false;
-      for (const selector of alternativeSelectors) {
-        try {
-          const element = this.page.locator(selector);
-          if ((await element.count()) > 0) {
-            await expect(element.first()).toBeVisible({ timeout: 2000 });
-            console.log(`Alternative success message found: ${selector}`);
-            found = true;
-            break;
-          }
-        } catch (altError) {
-          // Continue to next selector if this one fails
-          continue;
-        }
-      }
-
-      if (!found) {
-        // If no success message found, just verify we're on the block layout page
-        // which indicates the save worked (success messages may not always appear)
-        console.log(
-          'No success message found, but form submission completed successfully',
-        );
-        await expect(this.page.locator('h1')).toContainText('Block layout');
-        console.log('Verified block layout page - save was successful');
-      }
-    }
+    // Success message MUST appear after saving a block
+    const successMessage = this.page.locator(
+      '.messages--status, .messages.status, .messages.messages--status, .messages, [data-drupal-messages]',
+    );
+    await expect(successMessage.first()).toBeVisible({
+      timeout: 10000,
+    });
+    console.log('Success message found');
   }
 
   /**

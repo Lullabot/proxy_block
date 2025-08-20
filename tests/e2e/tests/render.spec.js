@@ -314,52 +314,48 @@ test.describe('Proxy Block Rendering', () => {
   });
 
   test('should render proxy block in different regions', async ({ page }) => {
-    const regions = ['content', 'content_below'];
+    // Discover available regions by finding all place block links
+    await blockPlacementPage.navigate(ENVIRONMENT.theme);
+    const allPlaceLinks = await page
+      .locator('a')
+      .filter({
+        hasText: /Place block in the .* region$/i,
+      })
+      .all();
 
-    for (const region of regions) {
-      // Check if region exists in theme by looking for place block link
+    // Extract region names from the first few place block links (test 2 regions max)
+    const availableRegions = [];
+    for (let i = 0; i < Math.min(allPlaceLinks.length, 2); i++) {
+      const linkText = await allPlaceLinks[i].textContent();
+      const match = linkText?.match(/Place block in the (.*) region$/i);
+      if (match) {
+        const regionDisplayName = match[1];
+        // Convert display name to machine name for testing
+        const regionMachineName = regionDisplayName
+          .toLowerCase()
+          .replace(/ /g, '_');
+        availableRegions.push({
+          machine: regionMachineName,
+          display: regionDisplayName,
+        });
+      }
+    }
+
+    expect(availableRegions.length).toBeGreaterThan(0);
+
+    for (const regionInfo of availableRegions) {
       await blockPlacementPage.navigate(ENVIRONMENT.theme);
 
-      let regionPattern;
-      if (region.toLowerCase() === 'content') {
-        regionPattern = /Place block in the Content region$/i;
-      } else if (region.toLowerCase() === 'content_below') {
-        regionPattern = /Place block in the Content Below region$/i;
-      } else {
-        // Convert region machine name to display name for pattern matching
-        const displayRegion = region
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase());
-        regionPattern = new RegExp(
-          `Place block in the .* ${displayRegion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} region`,
-          'i',
-        );
-      }
-
-      const placeLink = page
-        .locator('a')
-        .filter({
-          hasText: regionPattern,
-        })
-        .first();
-
-      if ((await placeLink.count()) === 0) {
-        console.log(
-          `Region ${region} not available in ${ENVIRONMENT.theme} theme`,
-        );
-        continue;
-      }
-
-      const blockTitle = `${region} Proxy Block ${Date.now()}`;
+      const blockTitle = `${regionInfo.display} Proxy Block ${Date.now()}`;
       testBlocks.push(blockTitle);
 
       // Place proxy block in the region
-      await blockPlacementPage.clickPlaceBlockForRegion(region);
+      await blockPlacementPage.clickPlaceBlockForRegion(regionInfo.machine);
       await blockPlacementPage.selectProxyBlock();
 
       await blockPlacementPage.configureBasicSettings({
         title: blockTitle,
-        region,
+        region: regionInfo.machine,
       });
 
       await blockPlacementPage.configureProxySettings({
@@ -373,7 +369,10 @@ test.describe('Proxy Block Rendering', () => {
       await frontendPage.navigateToHomepage();
 
       // Verify proxy block is present in the correct region
-      await frontendPage.verifyProxyBlockPresent(blockTitle, region);
+      await frontendPage.verifyProxyBlockPresent(
+        blockTitle,
+        regionInfo.machine,
+      );
 
       await frontendPage.verifyNoPHPErrors();
 
