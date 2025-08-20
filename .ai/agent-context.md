@@ -17,55 +17,26 @@ The module is part of the A/B Testing ecosystem and integrates with the [A/B Tes
 ### Drupal Commands
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev drush
-
-# Clear cache (frequently needed during development)
-ddev drush cache:rebuild
-ddev drush cr
-
-# Enable/disable the proxy_block module
-ddev drush pm:enable proxy_block
-ddev drush pm:uninstall proxy_block
-
-# Export/import configuration
-ddev drush config:export
-ddev drush config:import
-
-# Alternative: Standard commands (when not using DDEV)
-# Use drush from vendor/bin
+# Drupal management (using container drush)
 vendor/bin/drush
 
-# Clear cache
+# Clear cache (frequently needed during development)
 vendor/bin/drush cache:rebuild
 vendor/bin/drush cr
+
+# Enable/disable the proxy_block module
+vendor/bin/drush pm:enable proxy_block
+vendor/bin/drush pm:uninstall proxy_block
+
+# Export/import configuration
+vendor/bin/drush config:export
+vendor/bin/drush config:import
 ```
 
 ### Testing Commands
 
-#### Recommended: DDEV Testing Commands
-
 ```bash
 # Run all tests for the proxy_block module
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
-
-# Run specific test groups
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --group proxy_block
-
-# Run specific test types
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
-
-# Run with testdox output for readable results
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --testdox web/modules/contrib/proxy_block/tests
-```
-
-#### Alternative: Standard Commands (Non-DDEV)
-
-```bash
-# Run all tests (from Drupal root directory)
 vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
 
 # Run specific test groups
@@ -76,6 +47,9 @@ vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/prox
 vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
 vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
 vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
+
+# Run with testdox output for readable results
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --testdox web/modules/contrib/proxy_block/tests
 ```
 
 #### Important Testing Notes
@@ -91,19 +65,19 @@ The module includes Playwright E2E testing infrastructure for comprehensive cros
 
 ```bash
 # Install Playwright dependencies
-ddev exec npm ci
-ddev exec npm run e2e:install
+npm ci
+npm run e2e:install
 
 # Run E2E tests
-ddev exec npm run e2e:test                # Headless mode
-ddev exec npm run e2e:test:headed         # With browser UI
-ddev exec npm run e2e:test:debug          # Debug mode
+npm run e2e:test                # Headless mode
+npm run e2e:test:headed         # With browser UI
+npm run e2e:test:debug          # Debug mode
 
 # View test reports
-ddev exec npm run e2e:report
+npm run e2e:report
 
 # Run trivial infrastructure validation test
-ddev exec npx playwright test trivial.spec.js
+npx playwright test trivial.spec.js
 ```
 
 #### E2E Testing Features
@@ -117,13 +91,9 @@ ddev exec npx playwright test trivial.spec.js
 ### PHP Code Quality
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev php vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-ddev php vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-
-# Alternative: Standard commands (when not using DDEV)
-php ../../../../vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-php ../../../../vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
+# PHP coding standards
+vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
+vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
 ```
 
 ## Code Architecture
@@ -258,10 +228,10 @@ web/modules/contrib/proxy_block/
 ## Development Workflow
 
 1. **Make changes** to `ProxyBlock.php`
-2. **Clear cache**: `ddev drush cr` (or `vendor/bin/drush cr`)
+2. **Clear cache**: `vendor/bin/drush cr`
 3. **Test changes** through Drupal's block placement UI
-4. **Run tests**: `ddev exec vendor/bin/phpunit --group proxy_block`
-5. **Validate code**: `ddev composer run-script lint:check` and `ddev exec npm run check`
+4. **Run tests**: `vendor/bin/phpunit --group proxy_block`
+5. **Validate code**: `composer run-script lint:check` and `npm run check`
 
 ### Code Quality Commands
 
@@ -270,11 +240,6 @@ The module includes composer and npm scripts for comprehensive code quality chec
 #### PHP Code Quality
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev composer run-script lint:check
-ddev composer run-script lint:fix
-
-# Alternative: Standard commands (when not using DDEV)
 composer run-script lint:check
 composer run-script lint:fix
 ```
@@ -282,16 +247,6 @@ composer run-script lint:fix
 #### JavaScript/CSS/Spelling Code Quality
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev exec npm run check                    # Run all checks (JS, CSS, spelling)
-ddev exec npm run js:check                # JavaScript linting and formatting
-ddev exec npm run js:fix                  # Fix JavaScript issues
-ddev exec npm run stylelint:check         # CSS linting
-ddev exec npm run cspell:check           # Spell checking
-ddev exec npm run format:check           # Prettier formatting check
-ddev exec npm run format:fix             # Fix formatting issues
-
-# Alternative: Standard commands (when not using DDEV)
 npm run check                    # Run all checks (JS, CSS, spelling)
 npm run js:check                # JavaScript linting and formatting
 npm run js:fix                  # Fix JavaScript issues
@@ -306,21 +261,13 @@ npm run format:fix             # Fix formatting issues
 The module includes semantic release configuration:
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev composer run-script release
-
-# Alternative: Standard commands (when not using DDEV)
 composer run-script release
 ```
 
 ### PHPStan Static Analysis
 
 ```bash
-# DDEV commands (when using DDEV local environment)
-ddev php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
-
-# Alternative: Standard commands (when not using DDEV)
-php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
+vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
 ```
 
 ### Additional Development Tools
