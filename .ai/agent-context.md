@@ -11,13 +11,16 @@ The module is part of the A/B Testing ecosystem and integrates with the [A/B Tes
 ## Agent Strategies - Task Routing System
 
 ### Primary Task Router
+
 When receiving a user request, analyze it for both explicit keywords and contextual intent to route to the appropriate specialized agent(s). You can delegate multiple tasks in parallel to different agents or multiple instances of the same agent.
 
 ### Agent Selection Matrix
 
 #### 1. **task-orchestrator** (Primary Command Executor)
+
 **Keywords**: run, execute, test, build, compile, lint, check, validate, cache, drush, composer, npm, phpunit, command
 **Context Triggers**:
+
 - Any request to execute commands or scripts
 - Running tests or quality checks
 - Building or compiling code
@@ -25,13 +28,16 @@ When receiving a user request, analyze it for both explicit keywords and context
 - Command discovery from documentation
 
 **Examples**:
+
 - "Run the tests for proxy_block"
 - "Clear the cache and run phpcs"
 - "Execute the build pipeline"
 
 #### 2. **drupal-backend-expert** (PHP/Drupal Development)
+
 **Keywords**: module, plugin, entity, service, hook, api, database, query, field, formatter, controller, form, config, schema
 **Context Triggers**:
+
 - PHP code implementation
 - Drupal API usage
 - Database operations
@@ -39,13 +45,16 @@ When receiving a user request, analyze it for both explicit keywords and context
 - Module development
 
 **Examples**:
+
 - "Create a custom field formatter"
 - "Implement a new block plugin"
 - "Optimize this database query"
 
 #### 3. **drupal-frontend-specialist** (Theming/Frontend)
+
 **Keywords**: theme, template, twig, css, javascript, component, sdc, styling, responsive, accessibility, markup, sass
 **Context Triggers**:
+
 - Frontend development
 - Theming and templating
 - CSS/JS issues
@@ -53,13 +62,16 @@ When receiving a user request, analyze it for both explicit keywords and context
 - Accessibility improvements
 
 **Examples**:
+
 - "Create a card component"
 - "Fix mobile navigation styling"
 - "Convert patterns to SDCs"
 
 #### 4. **testing-qa-engineer** (Test Development)
+
 **Keywords**: test, phpunit, coverage, assert, mock, fixture, browser, selenium, behat, functional, unit, kernel, playwright, e2e
 **Context Triggers**:
+
 - Writing new tests
 - Debugging test failures
 - Improving test coverage
@@ -69,14 +81,17 @@ When receiving a user request, analyze it for both explicit keywords and context
 **Special Note**: When working with Playwright tests, this agent MUST consult `/var/www/html/web/modules/contrib/proxy_block/tests/e2e/CLAUDE.md` for Drupal-specific testing methodology and proven patterns.
 
 **Examples**:
+
 - "Write tests for the new plugin"
 - "Debug flaky browser tests"
 - "Create test coverage for this module"
 - "Fix Playwright test failures"
 
 #### 5. **devops-infrastructure-engineer** (Infrastructure/DevOps)
+
 **Keywords**: docker, kubernetes, ci/cd, pipeline, deploy, infrastructure, ansible, terraform, monitoring, performance
 **Context Triggers**:
+
 - Infrastructure setup
 - Deployment configuration
 - CI/CD pipeline work
@@ -84,6 +99,7 @@ When receiving a user request, analyze it for both explicit keywords and context
 - System administration
 
 **Examples**:
+
 - "Set up CI pipeline"
 - "Configure deployment automation"
 - "Optimize container performance"
@@ -91,6 +107,7 @@ When receiving a user request, analyze it for both explicit keywords and context
 ### Parallel Task Delegation Strategy
 
 When a request contains multiple distinct tasks:
+
 1. **Decompose** the request into independent subtasks
 2. **Match** each subtask to the most appropriate agent(s)
 3. **Delegate** tasks in parallel when they don't depend on each other
@@ -98,6 +115,7 @@ When a request contains multiple distinct tasks:
 
 **Example Multi-Agent Request**:
 User: "I need to create a new block plugin with tests and then deploy it to staging"
+
 - Route to `drupal-backend-expert`: Create block plugin
 - Route to `testing-qa-engineer`: Write comprehensive tests
 - Route to `devops-infrastructure-engineer`: Configure deployment
@@ -122,6 +140,7 @@ User: "I need to create a new block plugin with tests and then deploy it to stag
 ```
 
 ### Default Behavior
+
 - When in doubt, start with **task-orchestrator** for command-based tasks
 - For code implementation without commands, route to the domain expert
 - Always consider parallel delegation for complex multi-part requests
@@ -152,6 +171,7 @@ For detailed file structure and architecture, consult the appropriate specialize
 ## Quick Reference
 
 ### Performance & Security
+
 - Performance optimizations are built into the module architecture
 - Security follows Drupal best practices
 - For detailed implementation analysis, consult the **drupal-backend-expert** agent
@@ -159,20 +179,21 @@ For detailed file structure and architecture, consult the appropriate specialize
 ## Inter-Agent Task Delegation Framework
 
 ### Delegation Principles
+
 Specialized agents should **proactively delegate** subtasks to other agents when they encounter work outside their core expertise. This enables seamless multi-agent workflows and prevents agents from attempting tasks they're not optimized for.
 
 ### Delegation Decision Matrix
 
-| Current Agent | Delegation Trigger | Target Agent | Example Scenario |
-|---------------|-------------------|--------------|------------------|
-| **testing-qa-engineer** | Test reveals code bug/issue | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
-| **testing-qa-engineer** | Need to run test commands | **task-orchestrator** | "Run PHPUnit with specific flags for this module" |
-| **drupal-backend-expert** | Need to execute commands | **task-orchestrator** | "Clear cache after code changes" |
-| **drupal-backend-expert** | Code changes need tests | **testing-qa-engineer** | "Created new method, need unit test coverage" |
-| **drupal-frontend-specialist** | Need backend API changes | **drupal-backend-expert** | "Component needs new entity field" |
-| **drupal-frontend-specialist** | Need to run build commands | **task-orchestrator** | "Compile SCSS and run JS linting" |
-| **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator** | "Deploy using project-specific scripts" |
-| **Any Agent** | Command execution needed | **task-orchestrator** | "Run any bash command or script" |
+| Current Agent                      | Delegation Trigger                 | Target Agent              | Example Scenario                                                   |
+| ---------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| **testing-qa-engineer**            | Test reveals code bug/issue        | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
+| **testing-qa-engineer**            | Need to run test commands          | **task-orchestrator**     | "Run PHPUnit with specific flags for this module"                  |
+| **drupal-backend-expert**          | Need to execute commands           | **task-orchestrator**     | "Clear cache after code changes"                                   |
+| **drupal-backend-expert**          | Code changes need tests            | **testing-qa-engineer**   | "Created new method, need unit test coverage"                      |
+| **drupal-frontend-specialist**     | Need backend API changes           | **drupal-backend-expert** | "Component needs new entity field"                                 |
+| **drupal-frontend-specialist**     | Need to run build commands         | **task-orchestrator**     | "Compile SCSS and run JS linting"                                  |
+| **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator**     | "Deploy using project-specific scripts"                            |
+| **Any Agent**                      | Command execution needed           | **task-orchestrator**     | "Run any bash command or script"                                   |
 
 ### Delegation Protocol
 
@@ -198,16 +219,19 @@ I need to delegate this subtask to [TARGET_AGENT]:
 ### Example Delegation Flows
 
 #### Scenario 1: QA Engineer finds code bug
+
 ```
 testing-qa-engineer working on test → discovers bug in ProxyBlock.php → delegates to drupal-backend-expert → receives fix → updates test to verify fix
 ```
 
 #### Scenario 2: Backend Expert needs tests
+
 ```
 drupal-backend-expert implements new feature → delegates test creation to testing-qa-engineer → receives comprehensive tests → continues with development
 ```
 
 #### Scenario 3: Any agent needs commands
+
 ```
 [any-agent] working on task → needs to run commands → delegates to task-orchestrator → receives command results → continues with task
 ```

@@ -27,7 +27,9 @@
     "DDEV",
     "ddev",
     "Devel",
-    "Symfony"
+    "Symfony",
+    "olivero",
+    "networkidle"
   ],
   "ignorePaths": [
     "node_modules/**",

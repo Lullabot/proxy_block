@@ -77,7 +77,7 @@ You should **proactively delegate** tasks that fall outside your core testing ex
    - Example: "Test failing because ProxyBlock::build() has incorrect method signature"
    - Provide: Test failure details, expected vs actual behavior, file/line location
 
-2. **When you need to execute commands** → Delegate to **task-orchestrator** 
+2. **When you need to execute commands** → Delegate to **task-orchestrator**
    - Example: "Run PHPUnit tests with specific flags", "Clear cache before testing"
    - Provide: Exact command needed and why
 
@@ -110,6 +110,7 @@ I need to delegate this subtask to task-orchestrator:
 ### Testing Commands
 
 #### PHPUnit Testing
+
 ```bash
 # Run all tests for the proxy_block module
 vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
@@ -128,12 +129,14 @@ vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --testdox web/modules/co
 ```
 
 #### Important Testing Notes
+
 - All tests include `--debug` flag for better error reporting
 - Use the Drupal core PHPUnit configuration (`web/core/phpunit.xml.dist`)
 - FunctionalJavascript tests require proper browser driver setup
 - Tests are designed to be stable and reliable in CI environments
 
 #### End-to-End (E2E) Testing with Playwright
+
 The module includes Playwright E2E testing infrastructure for comprehensive cross-browser testing:
 
 ```bash
@@ -154,6 +157,7 @@ npx playwright test trivial.spec.js
 ```
 
 #### E2E Testing Features
+
 - **Cross-browser support**: Chromium, Firefox, WebKit, Mobile Chrome/Safari
 - **CI/CD integration**: GitHub Actions workflows for automated testing
 - **Visual testing**: Screenshots and videos on test failures
@@ -161,6 +165,7 @@ npx playwright test trivial.spec.js
 - **Page Object Model**: Reusable page objects for maintainable tests
 
 ### Test File Structure
+
 ```
 tests/
 ├── dummy.css                 # Test CSS file for linting

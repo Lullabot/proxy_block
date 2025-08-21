@@ -106,6 +106,7 @@ After running phpcs, I found code style violations. I need to delegate to drupal
 **Proxy Block Module Common Commands:**
 
 ### Drupal Commands
+
 ```bash
 # Use drush from vendor/bin
 vendor/bin/drush
@@ -124,12 +125,14 @@ vendor/bin/drush config:import
 ```
 
 ### PHP Code Quality
+
 ```bash
 php ../../../../vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
 php ../../../../vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
 ```
 
 ### Development Workflow
+
 1. **Make changes** to `ProxyBlock.php`
 2. **Clear cache**: `vendor/bin/drush cr`
 3. **Test changes** through Drupal's block placement UI
@@ -139,12 +142,14 @@ php ../../../../vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=
 ### Code Quality Commands
 
 #### PHP Code Quality
+
 ```bash
 composer run-script lint:check
 composer run-script lint:fix
 ```
 
 #### JavaScript/CSS/Spelling Code Quality
+
 ```bash
 npm run check                    # Run all checks (JS, CSS, spelling)
 npm run js:check                # JavaScript linting and formatting
@@ -156,11 +161,13 @@ npm run format:fix             # Fix formatting issues
 ```
 
 ### Release Management
+
 ```bash
 composer run-script release
 ```
 
 ### PHPStan Static Analysis
+
 ```bash
 php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
 ```
