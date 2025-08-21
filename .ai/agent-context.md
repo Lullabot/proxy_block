@@ -8,342 +8,213 @@ This is the **Proxy Block** module for Drupal 10/11 - a contributed module that 
 
 The module is part of the A/B Testing ecosystem and integrates with the [A/B Tests](https://www.github.com/Lullabot/ab_tests) project.
 
-## Agent Strategies
+## Agent Strategies - Task Routing System
 
-- Before starting a task, inspect the sub-agents in @.claude/agents/ Select the sub-agent that is most appropriate for the task if you are confident one of them is appropriate. If you don't think one is appropriate, do not use a sub-agent.
+### Primary Task Router
+When receiving a user request, analyze it for both explicit keywords and contextual intent to route to the appropriate specialized agent(s). You can delegate multiple tasks in parallel to different agents or multiple instances of the same agent.
+
+### Agent Selection Matrix
+
+#### 1. **task-orchestrator** (Primary Command Executor)
+**Keywords**: run, execute, test, build, compile, lint, check, validate, cache, drush, composer, npm, phpunit, command
+**Context Triggers**:
+- Any request to execute commands or scripts
+- Running tests or quality checks
+- Building or compiling code
+- Cache operations
+- Command discovery from documentation
+
+**Examples**:
+- "Run the tests for proxy_block"
+- "Clear the cache and run phpcs"
+- "Execute the build pipeline"
+
+#### 2. **drupal-backend-expert** (PHP/Drupal Development)
+**Keywords**: module, plugin, entity, service, hook, api, database, query, field, formatter, controller, form, config, schema
+**Context Triggers**:
+- PHP code implementation
+- Drupal API usage
+- Database operations
+- Backend architecture decisions
+- Module development
+
+**Examples**:
+- "Create a custom field formatter"
+- "Implement a new block plugin"
+- "Optimize this database query"
+
+#### 3. **drupal-frontend-specialist** (Theming/Frontend)
+**Keywords**: theme, template, twig, css, javascript, component, sdc, styling, responsive, accessibility, markup, sass
+**Context Triggers**:
+- Frontend development
+- Theming and templating
+- CSS/JS issues
+- Component creation
+- Accessibility improvements
+
+**Examples**:
+- "Create a card component"
+- "Fix mobile navigation styling"
+- "Convert patterns to SDCs"
+
+#### 4. **testing-qa-engineer** (Test Development)
+**Keywords**: test, phpunit, coverage, assert, mock, fixture, browser, selenium, behat, functional, unit, kernel, playwright, e2e
+**Context Triggers**:
+- Writing new tests
+- Debugging test failures
+- Improving test coverage
+- Test strategy development
+- Playwright/E2E test work
+
+**Special Note**: When working with Playwright tests, this agent MUST consult `/var/www/html/web/modules/contrib/proxy_block/tests/e2e/CLAUDE.md` for Drupal-specific testing methodology and proven patterns.
+
+**Examples**:
+- "Write tests for the new plugin"
+- "Debug flaky browser tests"
+- "Create test coverage for this module"
+- "Fix Playwright test failures"
+
+#### 5. **devops-infrastructure-engineer** (Infrastructure/DevOps)
+**Keywords**: docker, kubernetes, ci/cd, pipeline, deploy, infrastructure, ansible, terraform, monitoring, performance
+**Context Triggers**:
+- Infrastructure setup
+- Deployment configuration
+- CI/CD pipeline work
+- Performance optimization
+- System administration
+
+**Examples**:
+- "Set up CI pipeline"
+- "Configure deployment automation"
+- "Optimize container performance"
+
+### Parallel Task Delegation Strategy
+
+When a request contains multiple distinct tasks:
+1. **Decompose** the request into independent subtasks
+2. **Match** each subtask to the most appropriate agent(s)
+3. **Delegate** tasks in parallel when they don't depend on each other
+4. **Coordinate** results from multiple agents if needed
+
+**Example Multi-Agent Request**:
+User: "I need to create a new block plugin with tests and then deploy it to staging"
+- Route to `drupal-backend-expert`: Create block plugin
+- Route to `testing-qa-engineer`: Write comprehensive tests
+- Route to `devops-infrastructure-engineer`: Configure deployment
+- Route to `task-orchestrator`: Execute deployment commands
+
+### Routing Decision Tree
+
+```
+1. Analyze request for command execution needs
+   ├─ Yes → task-orchestrator (may delegate after execution)
+   └─ No → Continue analysis
+
+2. Identify primary domain
+   ├─ Backend/PHP → drupal-backend-expert
+   ├─ Frontend/Theme → drupal-frontend-specialist
+   ├─ Testing → testing-qa-engineer
+   ├─ Infrastructure → devops-infrastructure-engineer
+   └─ Multiple → Parallel delegation
+
+3. Check for follow-up needs
+   └─ Delegate additional tasks as needed
+```
+
+### Default Behavior
+- When in doubt, start with **task-orchestrator** for command-based tasks
+- For code implementation without commands, route to the domain expert
+- Always consider parallel delegation for complex multi-part requests
+- Maintain context between agent handoffs for coherent responses
 
 ## Common Development Commands
 
-### Drupal Commands
-
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev drush
-
-# Clear cache (frequently needed during development)
-ddev drush cache:rebuild
-ddev drush cr
-
-# Enable/disable the proxy_block module
-ddev drush pm:enable proxy_block
-ddev drush pm:uninstall proxy_block
-
-# Export/import configuration
-ddev drush config:export
-ddev drush config:import
-
-# Alternative: Standard commands (when not using DDEV)
-# Use drush from vendor/bin
-vendor/bin/drush
-
-# Clear cache
-vendor/bin/drush cache:rebuild
-vendor/bin/drush cr
-```
-
-### Testing Commands
-
-#### Recommended: DDEV Testing Commands
-
-```bash
-# Run all tests for the proxy_block module
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
-
-# Run specific test groups
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --group proxy_block
-
-# Run specific test types
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
-
-# Run with testdox output for readable results
-ddev php vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --testdox web/modules/contrib/proxy_block/tests
-```
-
-#### Alternative: Standard Commands (Non-DDEV)
-
-```bash
-# Run all tests (from Drupal root directory)
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
-
-# Run specific test groups
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist --group proxy_block
-
-# Run specific test types
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
-vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
-```
-
-#### Important Testing Notes
-
-- All tests include `--debug` flag for better error reporting
-- Use the Drupal core PHPUnit configuration (`web/core/phpunit.xml.dist`)
-- FunctionalJavascript tests require proper browser driver setup
-- Tests are designed to be stable and reliable in CI environments
-
-#### End-to-End (E2E) Testing with Playwright
-
-The module includes Playwright E2E testing infrastructure for comprehensive cross-browser testing:
-
-```bash
-# Install Playwright dependencies
-ddev exec npm ci
-ddev exec npm run e2e:install
-
-# Run E2E tests
-ddev exec npm run e2e:test                # Headless mode
-ddev exec npm run e2e:test:headed         # With browser UI
-ddev exec npm run e2e:test:debug          # Debug mode
-
-# View test reports
-ddev exec npm run e2e:report
-
-# Run trivial infrastructure validation test
-ddev exec npx playwright test trivial.spec.js
-```
-
-#### E2E Testing Features
-
-- **Cross-browser support**: Chromium, Firefox, WebKit, Mobile Chrome/Safari
-- **CI/CD integration**: GitHub Actions workflows for automated testing
-- **Visual testing**: Screenshots and videos on test failures
-- **Infrastructure validation**: Trivial tests to verify setup
-- **Page Object Model**: Reusable page objects for maintainable tests
-
-### PHP Code Quality
-
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev php vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-ddev php vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-
-# Alternative: Standard commands (when not using DDEV)
-php ../../../../vendor/bin/phpcs --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-php ../../../../vendor/bin/phpcbf --ignore='vendor/*,node_modules/*' --standard=Drupal,DrupalPractice --extensions=php,module/php,install/php,inc/php,yml web/modules/contrib/proxy_block
-```
+**Note**: For command execution and discovery, delegate to the **task-orchestrator** agent, which maintains a comprehensive list of all project commands and will execute them appropriately.
 
 ## Code Architecture
 
-### Core Component: ProxyBlock Plugin
-
-**Location**: `src/Plugin/Block/ProxyBlock.php`
-
-The main block plugin implements a sophisticated proxy pattern with the following key characteristics:
-
-#### Modern PHP Patterns
-
-- **Final class** with constructor promotion and dependency injection
-- **Strict typing** with `declare(strict_types=1)`
-- **PHP 8.1+ features** including union types and match expressions
-- **Functional programming** patterns using `array_map`, `array_filter`, `array_reduce`
-
-#### Key Interfaces
-
-- `ContainerFactoryPluginInterface` - Dependency injection support
-- `ContextAwarePluginInterface` - Context passing to target blocks
-- `BlockPluginInterface` - Standard Drupal block behavior
-
-#### Dependency Injection
-
-See the constructor in `src/Plugin/Block/ProxyBlock.php` for the complete dependency injection setup, which includes BlockManagerInterface, LoggerInterface, and AccountProxyInterface services.
-
-### Render Pipeline
-
-#### 1. Configuration Phase
-
-- **Target Block Selection**: Dropdown of all available block plugins (excluding self)
-- **AJAX Configuration**: Real-time form updates when target block changes
-- **Context Mapping**: Dynamic form for blocks requiring contexts (node, user, term, etc.)
-
-#### 2. Validation Phase
-
-- **Plugin Validation**: Ensures target block plugin exists and can be instantiated
-- **Context Validation**: Verifies all required contexts are mapped
-- **Configuration Validation**: Validates target block's own configuration
-
-#### 3. Render Phase
-
-The core render flow is implemented in the `build()` method in `src/Plugin/Block/ProxyBlock.php`. This method handles target block creation, access checking, render array generation, and cache metadata bubbling.
-
-### Context Handling System
-
-The module implements sophisticated context mapping for blocks that require contexts:
-
-#### Context Discovery
-
-- Inspects target block's `getContextDefinitions()`
-- Identifies required vs optional contexts
-- Builds dynamic mapping form
-
-#### Context Application
-
-- Maps proxy block contexts to target block contexts
-- Supports both automatic (same name) and manual mapping
-- Handles `ContextException` gracefully
-
-### Cache Integration
-
-Critical for performance - the module properly bubbles cache metadata through the `bubbleTargetBlockCacheMetadata()` method in `src/Plugin/Block/ProxyBlock.php`. This method merges cache contexts, tags, and max-age from both the target block and proxy block to ensure proper caching behavior.
-
-### Error Handling Strategy
-
-Comprehensive error handling with graceful degradation:
-
-- **Plugin Creation Errors**: Catches `PluginException`, logs error, returns empty render
-- **Context Errors**: Catches `ContextException`, logs warning, continues with available contexts
-- **Form Errors**: Validates configuration, provides user-friendly error messages
-
-## Development Patterns
-
-### Functional Programming Over Loops
-
-The codebase uses functional programming patterns with `array_map`, `array_filter`, and `array_reduce` throughout. See examples in the `blockForm()` and `passContextsToTargetBlock()` methods in `src/Plugin/Block/ProxyBlock.php`.
-
-### Polymorphism Over Conditionals
-
-Interface detection is used instead of string comparisons throughout the codebase. The proxy block checks for `ContextAwarePluginInterface` and `PluginFormInterface` implementations to determine target block capabilities.
-
-### Early Returns (Guard Clauses)
-
-Early returns are used consistently throughout the codebase to reduce nesting and improve readability. See examples in validation methods and helper functions in `src/Plugin/Block/ProxyBlock.php`.
-
-## Module Integration
-
-### A/B Testing Integration
-
-- Designed as foundation for A/B testing blocks
-- Works with the [A/B Tests](https://www.github.com/Lullabot/ab_tests) project
-- Block category: "A/B Testing"
-
-### Layout Builder Compatibility
-
-- Full Layout Builder integration
-- Standard block placement UI support
-- Respects all Drupal block placement patterns
-
-### Access Control Integration
-
-- Respects target block access permissions
-- No security bypass - maintains Drupal's access layer
-- Proper access result caching
+**Note**: For detailed architecture, implementation patterns, and technical specifications, delegate to the **drupal-backend-expert** agent.
 
 ## Key Files
 
-```
-web/modules/contrib/proxy_block/
-├── proxy_block.info.yml          # Module definition
-├── README.md                     # Comprehensive documentation
-├── composer.json                 # PHP dependencies and scripts
-├── package.json                  # Node.js dependencies and scripts
-├── phpstan.neon                  # PHPStan static analysis config
-├── phpunit.xml.dist              # PHPUnit test configuration
-├── cspell.json                   # Spell checking configuration
-├── release.config.cjs            # Semantic release configuration
-├── src/Plugin/Block/
-│   └── ProxyBlock.php            # Main plugin implementation (661 lines)
-└── tests/
-    ├── dummy.css                 # Test CSS file for linting
-    ├── dummy.js                  # Test JavaScript file for linting
-    └── src/
-        ├── Unit/                 # Unit tests
-        ├── Kernel/               # Kernel tests
-        ├── Functional/           # Functional tests
-        └── FunctionalJavascript/ # JavaScript functional tests
-```
+- **Main Implementation**: `src/Plugin/Block/ProxyBlock.php`
+- **Module Definition**: `proxy_block.info.yml`
+- **Tests**: `tests/src/` (Unit, Kernel, Functional, FunctionalJavascript)
+- **E2E Tests**: `tests/e2e/` (Unit, Kernel, Functional, FunctionalJavascript)
+- **Configuration**: Various config files for tools (phpstan.neon, phpunit.xml.dist, etc.)
 
-## Development Workflow
+For detailed file structure and architecture, consult the appropriate specialized agent.
 
-1. **Make changes** to `ProxyBlock.php`
-2. **Clear cache**: `ddev drush cr` (or `vendor/bin/drush cr`)
-3. **Test changes** through Drupal's block placement UI
-4. **Run tests**: `ddev exec vendor/bin/phpunit --group proxy_block`
-5. **Validate code**: `ddev composer run-script lint:check` and `ddev exec npm run check`
+## Development Workflow & Tools
 
-### Code Quality Commands
+**Note**: For development workflows, code quality commands, and tool configurations, delegate to the **task-orchestrator** agent for command execution or the appropriate specialized agent for implementation.
 
-The module includes composer and npm scripts for comprehensive code quality checks:
+## Quick Reference
 
-#### PHP Code Quality
+### Performance & Security
+- Performance optimizations are built into the module architecture
+- Security follows Drupal best practices
+- For detailed implementation analysis, consult the **drupal-backend-expert** agent
 
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev composer run-script lint:check
-ddev composer run-script lint:fix
+## Inter-Agent Task Delegation Framework
 
-# Alternative: Standard commands (when not using DDEV)
-composer run-script lint:check
-composer run-script lint:fix
-```
+### Delegation Principles
+Specialized agents should **proactively delegate** subtasks to other agents when they encounter work outside their core expertise. This enables seamless multi-agent workflows and prevents agents from attempting tasks they're not optimized for.
 
-#### JavaScript/CSS/Spelling Code Quality
+### Delegation Decision Matrix
 
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev exec npm run check                    # Run all checks (JS, CSS, spelling)
-ddev exec npm run js:check                # JavaScript linting and formatting
-ddev exec npm run js:fix                  # Fix JavaScript issues
-ddev exec npm run stylelint:check         # CSS linting
-ddev exec npm run cspell:check           # Spell checking
-ddev exec npm run format:check           # Prettier formatting check
-ddev exec npm run format:fix             # Fix formatting issues
+| Current Agent | Delegation Trigger | Target Agent | Example Scenario |
+|---------------|-------------------|--------------|------------------|
+| **testing-qa-engineer** | Test reveals code bug/issue | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
+| **testing-qa-engineer** | Need to run test commands | **task-orchestrator** | "Run PHPUnit with specific flags for this module" |
+| **drupal-backend-expert** | Need to execute commands | **task-orchestrator** | "Clear cache after code changes" |
+| **drupal-backend-expert** | Code changes need tests | **testing-qa-engineer** | "Created new method, need unit test coverage" |
+| **drupal-frontend-specialist** | Need backend API changes | **drupal-backend-expert** | "Component needs new entity field" |
+| **drupal-frontend-specialist** | Need to run build commands | **task-orchestrator** | "Compile SCSS and run JS linting" |
+| **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator** | "Deploy using project-specific scripts" |
+| **Any Agent** | Command execution needed | **task-orchestrator** | "Run any bash command or script" |
 
-# Alternative: Standard commands (when not using DDEV)
-npm run check                    # Run all checks (JS, CSS, spelling)
-npm run js:check                # JavaScript linting and formatting
-npm run js:fix                  # Fix JavaScript issues
-npm run stylelint:check         # CSS linting
-npm run cspell:check           # Spell checking
-npm run format:check           # Prettier formatting check
-npm run format:fix             # Fix formatting issues
+### Delegation Protocol
+
+When delegating, agents should:
+
+1. **Recognize the need**: Identify when a subtask falls outside their expertise
+2. **Select the right agent**: Use the delegation matrix to choose the appropriate specialist
+3. **Provide context**: Include relevant background about the current task
+4. **Request specific action**: Be clear about what needs to be done
+5. **Coordinate results**: Integrate the delegated work back into their main task
+
+### Delegation Syntax
+
+```markdown
+I need to delegate this subtask to [TARGET_AGENT]:
+
+**Context**: [Brief background about current work]
+**Delegation**: [Specific task to delegate]
+**Expected outcome**: [What should be returned]
+**Integration**: [How this fits back into main task]
 ```
 
-### Release Management
+### Example Delegation Flows
 
-The module includes semantic release configuration:
-
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev composer run-script release
-
-# Alternative: Standard commands (when not using DDEV)
-composer run-script release
+#### Scenario 1: QA Engineer finds code bug
+```
+testing-qa-engineer working on test → discovers bug in ProxyBlock.php → delegates to drupal-backend-expert → receives fix → updates test to verify fix
 ```
 
-### PHPStan Static Analysis
-
-```bash
-# DDEV commands (when using DDEV local environment)
-ddev php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
-
-# Alternative: Standard commands (when not using DDEV)
-php vendor/bin/phpstan.phar --configuration=web/modules/contrib/proxy_block/phpstan.neon
+#### Scenario 2: Backend Expert needs tests
+```
+drupal-backend-expert implements new feature → delegates test creation to testing-qa-engineer → receives comprehensive tests → continues with development
 ```
 
-### Additional Development Tools
+#### Scenario 3: Any agent needs commands
+```
+[any-agent] working on task → needs to run commands → delegates to task-orchestrator → receives command results → continues with task
+```
 
-- **PHPStan**: Static analysis configuration available in `phpstan.neon`
-- **PHPUnit**: Test configuration in `phpunit.xml.dist`
-- **CSpell**: Spell checking configuration in `cspell.json`
-- **Semantic Release**: Automated releases via `release.config.cjs`
-- **ESLint/Prettier**: JavaScript code quality and formatting
-- **Stylelint**: CSS code quality
+## Important Reminders
 
-## Performance Considerations
-
-- **Lazy Loading**: Target blocks created only when needed
-- **Instance Caching**: Target block instances cached within request
-- **Cache Metadata**: Proper cache tag/context bubbling prevents cache pollution
-- **AJAX Forms**: Responsive admin interface without full page reloads
-
-## Security Notes
-
-- Module respects all existing Drupal security layers
-- No privilege escalation - proxy block access ≠ target block access
-- All user input validated through Drupal Form API
-- Security events logged for audit trails
-
-- **ALWAYS** remember to lint the code base before pushing code.
+- **ALWAYS** remember to lint the code base before pushing code (use **task-orchestrator** to execute linting commands)
+- Route tasks to the most appropriate specialized agent based on the task routing system above
+- Consider parallel delegation for complex multi-part requests
+- **PROACTIVELY DELEGATE** when work falls outside your core expertise - don't attempt everything yourself
