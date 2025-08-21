@@ -87,7 +87,35 @@ When receiving a user request, analyze it for both explicit keywords and context
 - "Create test coverage for this module"
 - "Fix Playwright test failures"
 
-#### 5. **devops-infrastructure-engineer** (Infrastructure/DevOps)
+#### 5. **git-github-specialist** (Git & GitHub Operations)
+
+**Keywords**: git, github, commit, push, pull, branch, merge, rebase, pr, pull request, issue, gh, clone, checkout, stash, log, diff, status, remote, origin, upstream
+**Context Triggers**:
+
+- All Git version control operations
+- GitHub repository management
+- Commit message creation following conventional commit standards
+- Pull request creation and management
+- Issue creation and tracking
+- GitHub Actions monitoring and artifact management
+- Branch management and merging strategies
+- Repository analysis and history exploration
+
+**Special Capabilities**:
+- Analyzes past commit history to derive proper conventional commit format
+- Strictly avoids any AI attribution in commits, PRs, or any repository metadata
+- Deep expertise with `gh` CLI for comprehensive GitHub operations
+- Handles complex Git workflows including rebasing, cherry-picking, and conflict resolution
+
+**Examples**:
+- "Create a pull request for this feature"
+- "Commit these changes with proper conventional commit format"
+- "Check the status of GitHub Actions for this PR"
+- "Download artifacts from the latest CI run"
+- "Create an issue to track this bug"
+- "Analyze the commit history to understand recent changes"
+
+#### 6. **devops-infrastructure-engineer** (Infrastructure/DevOps)
 
 **Keywords**: docker, kubernetes, ci/cd, pipeline, deploy, infrastructure, ansible, terraform, monitoring, performance
 **Context Triggers**:
@@ -124,18 +152,22 @@ User: "I need to create a new block plugin with tests and then deploy it to stag
 ### Routing Decision Tree
 
 ```
-1. Analyze request for command execution needs
+1. Analyze request for Git/GitHub operations
+   ├─ Yes → git-github-specialist
+   └─ No → Continue analysis
+
+2. Analyze request for command execution needs
    ├─ Yes → task-orchestrator (may delegate after execution)
    └─ No → Continue analysis
 
-2. Identify primary domain
+3. Identify primary domain
    ├─ Backend/PHP → drupal-backend-expert
    ├─ Frontend/Theme → drupal-frontend-specialist
    ├─ Testing → testing-qa-engineer
    ├─ Infrastructure → devops-infrastructure-engineer
    └─ Multiple → Parallel delegation
 
-3. Check for follow-up needs
+4. Check for follow-up needs
    └─ Delegate additional tasks as needed
 ```
 
@@ -188,12 +220,18 @@ Specialized agents should **proactively delegate** subtasks to other agents when
 | ---------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------ |
 | **testing-qa-engineer**            | Test reveals code bug/issue        | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
 | **testing-qa-engineer**            | Need to run test commands          | **task-orchestrator**     | "Run PHPUnit with specific flags for this module"                  |
+| **testing-qa-engineer**            | Need to commit test changes        | **git-github-specialist** | "Commit new test files with proper commit message"                 |
 | **drupal-backend-expert**          | Need to execute commands           | **task-orchestrator**     | "Clear cache after code changes"                                   |
 | **drupal-backend-expert**          | Code changes need tests            | **testing-qa-engineer**   | "Created new method, need unit test coverage"                      |
+| **drupal-backend-expert**          | Need to commit code changes        | **git-github-specialist** | "Commit new feature with conventional commit format"               |
 | **drupal-frontend-specialist**     | Need backend API changes           | **drupal-backend-expert** | "Component needs new entity field"                                 |
 | **drupal-frontend-specialist**     | Need to run build commands         | **task-orchestrator**     | "Compile SCSS and run JS linting"                                  |
+| **drupal-frontend-specialist**     | Need to commit frontend changes    | **git-github-specialist** | "Commit styling updates and component changes"                     |
 | **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator**     | "Deploy using project-specific scripts"                            |
+| **devops-infrastructure-engineer** | Need to manage deployment branches | **git-github-specialist** | "Create release branch and tag version"                            |
+| **task-orchestrator**              | Need Git/GitHub operations         | **git-github-specialist** | "Create PR after running successful tests"                         |
 | **Any Agent**                      | Command execution needed           | **task-orchestrator**     | "Run any bash command or script"                                   |
+| **Any Agent**                      | Git/GitHub operations needed       | **git-github-specialist** | "Any version control or GitHub repository task"                    |
 
 ### Delegation Protocol
 
@@ -236,9 +274,23 @@ drupal-backend-expert implements new feature → delegates test creation to test
 [any-agent] working on task → needs to run commands → delegates to task-orchestrator → receives command results → continues with task
 ```
 
+#### Scenario 4: Any agent needs Git/GitHub operations
+
+```
+[any-agent] completes work → needs to commit/push/create PR → delegates to git-github-specialist → receives confirmation → task complete
+```
+
+#### Scenario 5: QA Engineer creates tests and commits
+
+```
+testing-qa-engineer writes tests → delegates to git-github-specialist for commit → receives proper commit → continues with additional test work
+```
+
 ## Important Reminders
 
 - **ALWAYS** remember to lint the code base before pushing code (use **task-orchestrator** to execute linting commands)
+- **ALWAYS** delegate Git and GitHub operations to **git-github-specialist** - never handle version control directly
 - Route tasks to the most appropriate specialized agent based on the task routing system above
 - Consider parallel delegation for complex multi-part requests
 - **PROACTIVELY DELEGATE** when work falls outside your core expertise - don't attempt everything yourself
+- **Git/GitHub Priority**: Any mention of commits, PRs, branches, or GitHub operations should immediately route to **git-github-specialist**

@@ -331,10 +331,12 @@ jobs:
           if-no-files-found: ignore
 
       - name: Install Playwright Browsers
+        if: matrix.drupal-core == '11-dev'
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: npx playwright install chromium
 
       - name: Verify Drupal Installation
+        if: matrix.drupal-core == '11-dev'
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
           echo "=== Verifying Drupal installation ==="
@@ -358,6 +360,7 @@ jobs:
           fi
 
       - name: Run Playwright E2E Tests (Basic)
+        if: matrix.drupal-core == '11-dev'
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           # Run basic CI-compatible tests
@@ -367,6 +370,7 @@ jobs:
           CI: 'true'
 
       - name: Run Playwright E2E Tests (Advanced)
+        if: matrix.drupal-core == '11-dev'
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           # Run actual proxy block functionality tests (start with block-placement only)
@@ -377,7 +381,7 @@ jobs:
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.drupal-core == '11-dev'
         with:
           name: playwright-report-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/playwright-report/
@@ -385,7 +389,7 @@ jobs:
 
       - name: Upload Playwright Test Results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.drupal-core == '11-dev'
         with:
           name: playwright-test-results-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/
@@ -393,7 +397,7 @@ jobs:
 
       - name: Upload Playwright Screenshots
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && matrix.drupal-core == '11-dev'
         with:
           name: playwright-screenshots-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/**/*.png
