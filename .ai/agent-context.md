@@ -222,18 +222,18 @@ Specialized agents should **proactively delegate** subtasks to other agents when
 | ---------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------ |
 | **testing-qa-engineer**            | Test reveals code bug/issue        | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
 | **testing-qa-engineer**            | Need to run test commands          | **task-orchestrator**     | "Run PHPUnit with specific flags for this module"                  |
-| **testing-qa-engineer**            | Need to commit test changes        | **git-github-manager** | "Commit new test files with proper commit message"                 |
+| **testing-qa-engineer**            | Need to commit test changes        | **git-github-manager**    | "Commit new test files with proper commit message"                 |
 | **drupal-backend-expert**          | Need to execute commands           | **task-orchestrator**     | "Clear cache after code changes"                                   |
 | **drupal-backend-expert**          | Code changes need tests            | **testing-qa-engineer**   | "Created new method, need unit test coverage"                      |
-| **drupal-backend-expert**          | Need to commit code changes        | **git-github-manager** | "Commit new feature with conventional commit format"               |
+| **drupal-backend-expert**          | Need to commit code changes        | **git-github-manager**    | "Commit new feature with conventional commit format"               |
 | **drupal-frontend-specialist**     | Need backend API changes           | **drupal-backend-expert** | "Component needs new entity field"                                 |
 | **drupal-frontend-specialist**     | Need to run build commands         | **task-orchestrator**     | "Compile SCSS and run JS linting"                                  |
-| **drupal-frontend-specialist**     | Need to commit frontend changes    | **git-github-manager** | "Commit styling updates and component changes"                     |
+| **drupal-frontend-specialist**     | Need to commit frontend changes    | **git-github-manager**    | "Commit styling updates and component changes"                     |
 | **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator**     | "Deploy using project-specific scripts"                            |
-| **devops-infrastructure-engineer** | Need to manage deployment branches | **git-github-manager** | "Create release branch and tag version"                            |
-| **task-orchestrator**              | Need Git/GitHub operations         | **git-github-manager** | "Create PR after running successful tests"                         |
+| **devops-infrastructure-engineer** | Need to manage deployment branches | **git-github-manager**    | "Create release branch and tag version"                            |
+| **task-orchestrator**              | Need Git/GitHub operations         | **git-github-manager**    | "Create PR after running successful tests"                         |
 | **Any Agent**                      | Command execution needed           | **task-orchestrator**     | "Run any bash command or script"                                   |
-| **Any Agent**                      | Git/GitHub operations needed       | **git-github-manager** | "Any version control or GitHub repository task"                    |
+| **Any Agent**                      | Git/GitHub operations needed       | **git-github-manager**    | "Any version control or GitHub repository task"                    |
 
 ### Delegation Protocol
 
