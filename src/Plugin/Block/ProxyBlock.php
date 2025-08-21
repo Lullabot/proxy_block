@@ -124,6 +124,8 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function defaultConfiguration() {
     $default_config = [
+      'label' => 'Proxy Block',
+      'label_display' => 'visible',
       'target_block' => ['id' => NULL, 'config' => []],
     ];
     return $default_config + parent::defaultConfiguration();
@@ -210,7 +212,11 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
     parent::blockSubmit($form, $form_state);
-    $this->configuration = $this->formProcessor->submitTargetBlock($form_state);
+    $target_config = $this->formProcessor->submitTargetBlock($form_state);
+    // Merge the target block configuration with existing configuration
+    // to preserve the label and other base block settings from
+    // parent::blockSubmit()
+    $this->configuration = NestedArray::mergeDeep($this->configuration, $target_config);
   }
 
   /**
