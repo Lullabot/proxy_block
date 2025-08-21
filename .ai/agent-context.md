@@ -102,12 +102,14 @@ When receiving a user request, analyze it for both explicit keywords and context
 - Repository analysis and history exploration
 
 **Special Capabilities**:
+
 - Analyzes past commit history to derive proper conventional commit format
 - Strictly avoids any AI attribution in commits, PRs, or any repository metadata
 - Deep expertise with `gh` CLI for comprehensive GitHub operations
 - Handles complex Git workflows including rebasing, cherry-picking, and conflict resolution
 
 **Examples**:
+
 - "Create a pull request for this feature"
 - "Commit these changes with proper conventional commit format"
 - "Check the status of GitHub Actions for this PR"
