@@ -87,7 +87,7 @@ When receiving a user request, analyze it for both explicit keywords and context
 - "Create test coverage for this module"
 - "Fix Playwright test failures"
 
-#### 5. **git-github-specialist** (Git & GitHub Operations)
+#### 5. **git-github-manager** (Git & GitHub Operations)
 
 **Keywords**: git, github, commit, push, pull, branch, merge, rebase, pr, pull request, issue, gh, clone, checkout, stash, log, diff, status, remote, origin, upstream
 **Context Triggers**:
@@ -155,7 +155,7 @@ User: "I need to create a new block plugin with tests and then deploy it to stag
 
 ```
 1. Analyze request for Git/GitHub operations
-   ├─ Yes → git-github-specialist
+   ├─ Yes → git-github-manager
    └─ No → Continue analysis
 
 2. Analyze request for command execution needs
@@ -222,18 +222,18 @@ Specialized agents should **proactively delegate** subtasks to other agents when
 | ---------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------ |
 | **testing-qa-engineer**            | Test reveals code bug/issue        | **drupal-backend-expert** | "Test failing due to incorrect method signature in ProxyBlock.php" |
 | **testing-qa-engineer**            | Need to run test commands          | **task-orchestrator**     | "Run PHPUnit with specific flags for this module"                  |
-| **testing-qa-engineer**            | Need to commit test changes        | **git-github-specialist** | "Commit new test files with proper commit message"                 |
+| **testing-qa-engineer**            | Need to commit test changes        | **git-github-manager** | "Commit new test files with proper commit message"                 |
 | **drupal-backend-expert**          | Need to execute commands           | **task-orchestrator**     | "Clear cache after code changes"                                   |
 | **drupal-backend-expert**          | Code changes need tests            | **testing-qa-engineer**   | "Created new method, need unit test coverage"                      |
-| **drupal-backend-expert**          | Need to commit code changes        | **git-github-specialist** | "Commit new feature with conventional commit format"               |
+| **drupal-backend-expert**          | Need to commit code changes        | **git-github-manager** | "Commit new feature with conventional commit format"               |
 | **drupal-frontend-specialist**     | Need backend API changes           | **drupal-backend-expert** | "Component needs new entity field"                                 |
 | **drupal-frontend-specialist**     | Need to run build commands         | **task-orchestrator**     | "Compile SCSS and run JS linting"                                  |
-| **drupal-frontend-specialist**     | Need to commit frontend changes    | **git-github-specialist** | "Commit styling updates and component changes"                     |
+| **drupal-frontend-specialist**     | Need to commit frontend changes    | **git-github-manager** | "Commit styling updates and component changes"                     |
 | **devops-infrastructure-engineer** | Need application-specific commands | **task-orchestrator**     | "Deploy using project-specific scripts"                            |
-| **devops-infrastructure-engineer** | Need to manage deployment branches | **git-github-specialist** | "Create release branch and tag version"                            |
-| **task-orchestrator**              | Need Git/GitHub operations         | **git-github-specialist** | "Create PR after running successful tests"                         |
+| **devops-infrastructure-engineer** | Need to manage deployment branches | **git-github-manager** | "Create release branch and tag version"                            |
+| **task-orchestrator**              | Need Git/GitHub operations         | **git-github-manager** | "Create PR after running successful tests"                         |
 | **Any Agent**                      | Command execution needed           | **task-orchestrator**     | "Run any bash command or script"                                   |
-| **Any Agent**                      | Git/GitHub operations needed       | **git-github-specialist** | "Any version control or GitHub repository task"                    |
+| **Any Agent**                      | Git/GitHub operations needed       | **git-github-manager** | "Any version control or GitHub repository task"                    |
 
 ### Delegation Protocol
 
@@ -279,20 +279,20 @@ drupal-backend-expert implements new feature → delegates test creation to test
 #### Scenario 4: Any agent needs Git/GitHub operations
 
 ```
-[any-agent] completes work → needs to commit/push/create PR → delegates to git-github-specialist → receives confirmation → task complete
+[any-agent] completes work → needs to commit/push/create PR → delegates to git-github-manager → receives confirmation → task complete
 ```
 
 #### Scenario 5: QA Engineer creates tests and commits
 
 ```
-testing-qa-engineer writes tests → delegates to git-github-specialist for commit → receives proper commit → continues with additional test work
+testing-qa-engineer writes tests → delegates to git-github-manager for commit → receives proper commit → continues with additional test work
 ```
 
 ## Important Reminders
 
 - **ALWAYS** remember to lint the code base before pushing code (use **task-orchestrator** to execute linting commands)
-- **ALWAYS** delegate Git and GitHub operations to **git-github-specialist** - never handle version control directly
+- **ALWAYS** delegate Git and GitHub operations to **git-github-manager** - never handle version control directly
 - Route tasks to the most appropriate specialized agent based on the task routing system above
 - Consider parallel delegation for complex multi-part requests
 - **PROACTIVELY DELEGATE** when work falls outside your core expertise - don't attempt everything yourself
-- **Git/GitHub Priority**: Any mention of commits, PRs, branches, or GitHub operations should immediately route to **git-github-specialist**
+- **Git/GitHub Priority**: Any mention of commits, PRs, branches, or GitHub operations should immediately route to **git-github-manager**
