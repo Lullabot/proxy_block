@@ -108,7 +108,7 @@ jobs:
           composer --dev --no-interaction --no-progress install
 
           # Install Node.js dependencies for E2E tests
-          npm ci
+          npm install --include=dev
 
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
@@ -162,10 +162,10 @@ jobs:
           # Find the actual drush.php file
           if [ -f "vendor/drush/drush/drush.php" ]; then
             echo "Found drush.php, testing direct execution..."
-            
+
             # Test version first
             php vendor/drush/drush/drush.php --version || echo "Direct drush.php version failed"
-            
+
             # Use direct drush.php for installation
             echo "=== Running site-install with direct drush.php ==="
             set -x
@@ -182,7 +182,7 @@ jobs:
             set +x
           else
             echo "drush.php not found, trying alternative methods..."
-            
+
             # Look for drush executable in vendor/bin
             if [ -f "vendor/bin/drush.php" ]; then
               echo "Found drush.php in vendor/bin..."
@@ -209,7 +209,7 @@ jobs:
           if [ -f "web/sites/default/settings.php" ]; then
             echo "✓ settings.php created successfully"
             echo "✓ Drupal installation completed"
-            
+
             # Verify drush status now works with direct drush.php
             if [ -f "vendor/drush/drush/drush.php" ]; then
               echo "Checking site status with direct drush.php..."
