@@ -86,7 +86,7 @@ jobs:
           composer config platform.php ${{ matrix.php-version }}
 
           # Add essential development dependencies for Drupal testing
-          composer require --dev --no-interaction \
+          composer require --no-interaction \
             drupal/core-dev \
             drupal/coder \
             drush/drush \
@@ -105,7 +105,7 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           composer config --no-plugins allow-plugins.phpstan/extension-installer true
-          composer --dev --no-interaction --no-progress install
+          composer --no-interaction --no-progress install
 
           # Install Node.js dependencies for E2E tests
           npm install --include=dev
