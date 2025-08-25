@@ -69,5 +69,17 @@
     "import/no-unresolved": ["off"],
     "no-unused-expressions": ["error", { "allowShortCircuit": true }],
     "no-unused-vars": ["off"]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tests/e2e/**/*.js"],
+      "rules": {
+        "no-await-in-loop": "off",
+        "no-restricted-syntax": "off",
+        "no-continue": "off",
+        "import/no-extraneous-dependencies": "off",
+        "valid-jsdoc": "warn"
+      }
+    }
+  ]
 }

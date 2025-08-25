@@ -22,9 +22,9 @@ env:
   SYMFONY_DEPRECATIONS_HELPER: 'ignoreFile=${{ github.workspace }}/drupal-root/.deprecation-ignore.txt'
 
 jobs:
-  # Combined Drupal CI Job - Composer, PHPStan, and PHPUnit
+  # Combined Drupal CI Job - Composer, PHPStan, PHPUnit, and E2E Tests
   test:
-    name: '🧪 Drupal (${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
+    name: '🧪 Tests (Drupal ${{ matrix.drupal-core }}, PHP ${{ matrix.php-version }})'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,6 +58,11 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Get Composer cache directory
         id: composer-cache
         run: echo "dir=$(composer --global config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -77,11 +82,9 @@ jobs:
       - name: Configure Drupal project
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          # Configure platform PHP version
           composer config platform.php ${{ matrix.php-version }}
 
-          # Add essential development dependencies for Drupal testing
-          composer require --dev --no-interaction \
+          composer require --no-interaction \
             drupal/core-dev \
             drupal/coder \
             drush/drush \
@@ -100,7 +103,9 @@ jobs:
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
           composer config --no-plugins allow-plugins.phpstan/extension-installer true
-          composer --dev --no-interaction --no-progress install
+          composer --no-interaction --no-progress install
+
+          npm install --include=dev
 
       - name: Run PHPCS
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
@@ -116,17 +121,20 @@ jobs:
       - name: Install Drupal
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          php vendor/bin/drush site-install standard \
+          vendor/bin/drush site-install standard \
             --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
             --account-name=admin \
             --account-pass=admin \
+            --site-name="Drupal Test Site" \
             --yes
+
+          vendor/bin/drush status
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          php vendor/bin/drush cache:rebuild
-          php vendor/bin/drush pm:enable ${{ env.MODULE_NAME }} --yes
+          vendor/bin/drush cache:rebuild
+          vendor/bin/drush pm:enable ${{ env.MODULE_NAME }} --yes
 
       - name: Copy deprecation ignore file
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -142,7 +150,6 @@ jobs:
 
       - name: Start ChromeDriver
         run: |
-          # ChromeDriver is already installed with Chrome
           chromedriver --port=9515 &
           sleep 2
 
@@ -211,6 +218,67 @@ jobs:
           name: functional-js-test-html-output-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
           path: |
             ${{ env.DRUPAL_ROOT }}/web/sites/simpletest/browser_output/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Install Playwright Browsers
+        if: matrix.drupal-core == '11-dev'
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: npx playwright install chromium
+
+      - name: Verify Drupal Installation
+        if: matrix.drupal-core == '11-dev'
+        working-directory: ${{ env.DRUPAL_ROOT }}
+        run: |
+          echo "=== Verifying Drupal installation ==="
+
+          echo "Checking drush status..."
+          vendor/bin/drush status
+
+          echo "Checking homepage..."
+          curl -s "http://127.0.0.1:8080/" | head -c 200
+          echo ""
+
+          # Verify login page shows form, not installer redirect
+          echo "Checking login page..."
+          if curl -s "http://127.0.0.1:8080/user/login" | grep -q "install.php"; then
+            echo "ERROR: Site is redirecting to installer - installation failed"
+            exit 1
+          else
+            echo "Login page accessible (not redirecting to installer)"
+          fi
+
+      - name: Run Playwright E2E Tests
+        if: matrix.drupal-core == '11-dev'
+        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
+        run: |
+          npx playwright test tests/e2e/tests/
+        env:
+          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
+          CI: 'true'
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always() && matrix.drupal-core == '11-dev'
+        with:
+          name: playwright-report-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/playwright-report/
+          retention-days: 7
+
+      - name: Upload Playwright Test Results
+        uses: actions/upload-artifact@v4
+        if: always() && matrix.drupal-core == '11-dev'
+        with:
+          name: playwright-test-results-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/
+          retention-days: 7
+
+      - name: Upload Playwright Screenshots
+        uses: actions/upload-artifact@v4
+        if: failure() && matrix.drupal-core == '11-dev'
+        with:
+          name: playwright-screenshots-drupal-${{ matrix.drupal-core }}-php-${{ matrix.php-version }}
+          path: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}/test-results/**/*.png
           retention-days: 14
           if-no-files-found: ignore
 

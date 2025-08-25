@@ -49,7 +49,10 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
 
     // Test the specific proxy_block additions.
     $this->assertArrayHasKey('target_block', $result);
-    $this->assertEquals(['id' => NULL, 'config' => []], $result['target_block']);
+    $this->assertEquals([
+      'id' => NULL,
+      'config' => [],
+    ], $result['target_block']);
   }
 
   /**
@@ -122,7 +125,12 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
   public function testBlockFormWithSelectedTarget(): void {
     $form = [];
     $form_state = $this->createMock(FormStateInterface::class);
-    $config = ['target_block' => ['id' => 'system_branding_block', 'config' => []]];
+    $config = [
+      'target_block' => [
+        'id' => 'system_branding_block',
+        'config' => [],
+      ],
+    ];
 
     $this->blockManager
       ->expects($this->once())
@@ -211,7 +219,16 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
   public function testBlockSubmit(): void {
     $form = [];
     $form_state = $this->createMock(FormStateInterface::class);
-    $expected_config = ['target_block' => ['id' => 'test_block']];
+    $expected_config = [
+      'target_block' => [
+        'id' => 'test_block',
+        'config' => [],
+      ],
+      'id' => 'proxy_block_proxy',
+      'label' => 'Proxy Block',
+      'label_display' => 'visible',
+      'provider' => 'proxy_block',
+    ];
 
     $this->formProcessor
       ->expects($this->once())
@@ -391,7 +408,10 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
    */
   public function testGetCacheTags(): void {
     $target_block = $this->createMock(BlockBase::class);
-    $expected_tags = ['config:block.block.test', 'block_plugin:system_branding_block'];
+    $expected_tags = [
+      'config:block.block.test',
+      'block_plugin:system_branding_block',
+    ];
 
     $this->targetBlockFactory
       ->expects($this->once())

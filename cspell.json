@@ -23,7 +23,22 @@
     "subform",
     "Subform",
     "SubformState",
-    "BROWSERTEST"
+    "BROWSERTEST",
+    "DDEV",
+    "ddev",
+    "Devel",
+    "Symfony",
+    "olivero",
+    "networkidle",
+    "behat"
   ],
-  "ignorePaths": ["node_modules/**", ".git/**", "vendor/**", "*.min.*"]
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "vendor/**",
+    "*.min.*",
+    "ci-artifacts/**",
+    "playwright-report/**",
+    "test-results/**"
+  ]
 }
