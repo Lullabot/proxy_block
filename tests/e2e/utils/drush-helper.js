@@ -1,215 +1,191 @@
 /**
  * @file
- * Custom Drush helper for test isolation without external dependencies.
+ * Custom Drush execution utilities for E2E tests.
+ * 
+ * Replaces problematic @lullabot/playwright-drupal imports with
+ * standard Node.js child_process execution patterns.
  */
 
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const fs = require('fs');
-
-const execAsync = promisify(exec);
+const { execSync } = require('child_process');
+const path = require('path');
 
 /**
- * Execute Drush command with environment-appropriate wrapper.
- *
+ * Execute Drush commands in the Drupal site.
+ * 
+ * @param {string} command - Drush command to execute (without 'drush' prefix)
+ * @param {Object} options - Execution options
+ * @return {string} Command output
+ */
+async function execDrushInTestSite(command, options = {}) {
+  // Go to the Drupal root directory (/var/www/html) 
+  const drupalRoot = '/var/www/html';
+  
+  const defaults = {
+    cwd: drupalRoot,
+    encoding: 'utf8',
+    timeout: 30000, // 30 second timeout
+    stdio: 'pipe',
+    ...options
+  };
+
+  try {
+    // Use the known drush location
+    const drushCommand = `vendor/bin/drush ${command}`;
+    
+    // Execute synchronously to match the expected API
+    const result = execSync(drushCommand, defaults);
+    
+    // Return trimmed output as string
+    return result.toString().trim();
+  } catch (error) {
+    // Log error details for debugging
+    console.error(`Drush command failed: ${command}`);
+    console.error(`Error: ${error.message}`);
+    console.error(`Working directory: ${drupalRoot}`);
+    
+    // Re-throw with more context
+    throw new Error(`Drush execution failed: ${command} - ${error.message}`);
+  }
+}
+
+/**
+ * Execute Drush commands asynchronously (for compatibility).
+ * 
  * @param {string} command - Drush command to execute
- * @return {Promise<string>} - Command output
+ * @param {Object} options - Execution options
+ * @return {Promise<string>} Command output
  */
-async function execDrush(command) {
+async function execDrushAsync(command, options = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const result = execDrushInTestSite(command, options);
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Check if Drush is available and working.
+ * 
+ * @return {boolean} Whether Drush is available
+ */
+async function isDrushAvailable() {
   try {
-    // Check if running in DDEV environment
-    const isDdev = process.env.IS_DDEV_PROJECT === 'true';
-
-    let drushCommand;
-    let workingDir;
-
-    if (isDdev) {
-      drushCommand = `ddev drush ${command}`;
-      workingDir = '/var/www/html';
-    } else {
-      // Find the Drupal root directory
-      const currentDir = process.cwd();
-
-      // If we're in the module directory, navigate up to find the Drupal root
-      if (currentDir.includes('web/modules/contrib/')) {
-        // Extract the path up to the Drupal root
-        const drupalRootPath = currentDir.substring(
-          0,
-          currentDir.indexOf('web/modules/contrib/'),
-        );
-        // Use direct drush.php execution to avoid shell wrapper issues in CI
-        drushCommand = `php vendor/drush/drush/drush.php --root=web ${command}`;
-        // Set working directory to the Drupal root (where vendor/ and composer.json are)
-        workingDir = drupalRootPath;
-      } else {
-        // Fallback: assume we're already at the Drupal root - use direct drush.php
-        drushCommand = `php vendor/drush/drush/drush.php --root=web ${command}`;
-        workingDir = currentDir;
-      }
-    }
-
-    const { stdout, stderr } = await execAsync(drushCommand, {
-      cwd: workingDir,
-    });
-
-    if (stderr && !stderr.includes('project list')) {
-      console.warn('Drush stderr:', stderr);
-    }
-
-    return stdout.trim();
+    await execDrushInTestSite('status --format=json');
+    return true;
   } catch (error) {
-    console.error(`Drush command failed: ${command}`, error);
-    throw error;
+    console.warn('Drush not available:', error.message);
+    return false;
   }
 }
 
 /**
- * Create a test admin user.
+ * Get Drupal site status information.
+ * 
+ * @return {Object} Site status information
  */
-async function createAdminUser() {
+async function getSiteStatus() {
   try {
-    // Delete any existing admin user first
-    try {
-      await execDrush('user:cancel admin --delete-content');
-    } catch (e) {
-      // User doesn't exist, which is fine
-    }
-
-    // Create admin user (--uid option not supported in this drush version)
-    await execDrush(
-      'user:create admin --mail="admin@example.com" --password="admin"',
-    );
-
-    // Add administrator role
-    await execDrush('user:role:add administrator admin');
-
-    // Since Drupal 10.3+, UID 1 bypass is disabled in CI environments
-    // We need to explicitly grant ALL necessary permissions for block management
-
-    // Note: drush doesn't have a role:perm:list command
-    // We'll just add the permissions we know exist
-
-    // Core block and theme administration permissions
-    await execDrush('role:perm:add administrator "administer blocks"');
-
-    // Try alternative permission names for block layout
-    const blockLayoutPermissions = [
-      'administer blocks', // This one exists
-      'access block library', // Alternative
-    ];
-
-    for (const permission of blockLayoutPermissions) {
-      try {
-        await execDrush(`role:perm:add administrator "${permission}"`);
-        console.log(`Added permission: ${permission}`);
-      } catch (e) {
-        console.log(`Permission "${permission}" not found: ${e.message}`);
-      }
-    }
-
-    await execDrush('role:perm:add administrator "administer themes"');
-
-    // Essential administration access permissions
-    await execDrush(
-      'role:perm:add administrator "access administration pages"',
-    );
-    await execDrush(
-      'role:perm:add administrator "view the administration theme"',
-    );
-    await execDrush(
-      'role:perm:add administrator "administer site configuration"',
-    );
-    await execDrush('role:perm:add administrator "access toolbar"');
-
-    // Content and system permissions
-    await execDrush('role:perm:add administrator "access content"');
-    await execDrush('role:perm:add administrator "access content overview"');
-    await execDrush('role:perm:add administrator "administer content types"');
-    await execDrush('role:perm:add administrator "administer nodes"');
-
-    // Text format permissions
-    await execDrush('role:perm:add administrator "use text format basic_html"');
-    await execDrush('role:perm:add administrator "use text format full_html"');
-    await execDrush(
-      'role:perm:add administrator "use text format restricted_html"',
-    );
-
-    // Menu and URL alias permissions that might be needed
-    await execDrush('role:perm:add administrator "administer menu"');
-    await execDrush('role:perm:add administrator "administer url aliases"');
-
-    // User administration permissions
-    await execDrush('role:perm:add administrator "administer users"');
-    await execDrush('role:perm:add administrator "administer permissions"');
-
-    // Module administration permissions
-    await execDrush('role:perm:add administrator "administer modules"');
-
-    // Debug: Check what user ID was actually created
-    try {
-      const userInfo = await execDrush('user:information admin --format=yaml');
-      console.log('Admin user info (YAML):', userInfo);
-    } catch (e) {
-      console.warn('Could not get user info:', e.message);
-    }
-
-    // Debug: Check roles (using role:list instead)
-    try {
-      const roleList = await execDrush('role:list --format=yaml');
-      console.log('Available roles:', roleList);
-    } catch (e) {
-      console.warn('Could not list roles:', e.message);
-    }
-
-    console.log('Created admin user with comprehensive permissions');
+    const result = await execDrushInTestSite('status --format=json');
+    return JSON.parse(result);
   } catch (error) {
-    console.error('Failed to create admin user:', error);
-    throw error;
+    console.warn('Could not get site status:', error.message);
+    return {};
   }
 }
 
 /**
- * Enable a module.
- * @param {string} moduleName - Name of the module to enable
+ * Enable a module if it's not already enabled.
+ * 
+ * @param {string} moduleName - Module machine name
+ * @return {boolean} Whether the module was enabled successfully
  */
 async function enableModule(moduleName) {
   try {
-    // First check if module is already enabled
-    try {
-      const output = await execDrush(`pm:list --status=enabled --format=list`);
-      if (output.includes(moduleName)) {
-        console.log(`Module ${moduleName} is already enabled`);
-        return;
-      }
-    } catch (listError) {
-      // If we can't check the status, try to enable anyway
-      console.warn(`Could not check module status: ${listError.message}`);
-    }
-
-    await execDrush(`pm:enable ${moduleName} -y`);
-    console.log(`Enabled module: ${moduleName}`);
+    await execDrushInTestSite(`pm:enable ${moduleName} -y`);
+    return true;
   } catch (error) {
-    console.error(`Failed to enable module ${moduleName}:`, error);
-    throw error;
+    console.error(`Failed to enable module ${moduleName}:`, error.message);
+    return false;
   }
 }
 
 /**
- * Clear cache.
+ * Clear all Drupal caches.
+ * 
+ * @return {boolean} Whether cache clearing succeeded
  */
 async function clearCache() {
   try {
-    await execDrush('cache:rebuild');
-    console.log('Cache cleared successfully');
+    await execDrushInTestSite('cache:rebuild');
+    return true;
   } catch (error) {
-    console.error('Failed to clear cache:', error);
-    throw error;
+    console.error('Failed to clear cache:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Create an admin user for testing.
+ * 
+ * @param {string} username - Username (defaults to 'admin')
+ * @param {string} password - Password (defaults to 'admin')
+ * @param {string} email - Email (defaults to admin@example.com)
+ * @return {Object} User credentials
+ */
+async function createAdminUser(username = 'admin', password = 'admin', email = 'admin@example.com') {
+  try {
+    // Try to create user (might already exist)
+    try {
+      await execDrushInTestSite(`user:create ${username} --mail="${email}" --password="${password}"`);
+    } catch (createError) {
+      // User might already exist, try to reset password instead
+      await execDrushInTestSite(`user:password ${username} "${password}"`);
+    }
+    
+    // Ensure user has admin role
+    await execDrushInTestSite(`user:role:add administrator ${username}`);
+    
+    return {
+      username,
+      password,
+      email,
+    };
+  } catch (error) {
+    console.error(`Failed to create/setup admin user ${username}:`, error.message);
+    return {
+      username,
+      password,
+      email,
+    };
+  }
+}
+
+/**
+ * Delete a user account.
+ * 
+ * @param {string} username - Username to delete
+ * @return {boolean} Whether deletion succeeded
+ */
+async function deleteUser(username) {
+  try {
+    await execDrushInTestSite(`user:delete ${username}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to delete user ${username}:`, error.message);
+    return false;
   }
 }
 
 module.exports = {
-  execDrush,
-  createAdminUser,
+  execDrushInTestSite,
+  execDrushAsync,
+  isDrushAvailable,
+  getSiteStatus,
   enableModule,
   clearCache,
+  createAdminUser,
+  deleteUser,
 };

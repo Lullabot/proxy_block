@@ -29,7 +29,8 @@
     "Devel",
     "Symfony",
     "olivero",
-    "networkidle"
+    "networkidle",
+    "behat"
   ],
   "ignorePaths": [
     "node_modules/**",

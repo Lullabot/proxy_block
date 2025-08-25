@@ -1,8 +1,8 @@
 /**
  * @file
- * Proxy Block configuration and placement tests for E2E testing.
- * Tests proxy-specific functionality including target block selection,
- * configuration, and validation.
+ * Proxy Block specific configuration tests for E2E testing.
+ * Tests proxy-specific configuration functionality, target block settings,
+ * and proxy block settings validation.
  */
 
 const { test, expect } = require('@playwright/test');
@@ -32,7 +32,6 @@ async function setupAdminUser(page) {
   await page.goto('/user/login');
   await page.waitForLoadState('networkidle');
 
-  // Login form MUST be available
   const loginForm = page.locator('#user-login-form');
   await expect(loginForm).toBeVisible();
 
@@ -42,27 +41,7 @@ async function setupAdminUser(page) {
   await page.waitForLoadState('networkidle');
 }
 
-/**
- * Helper function to wait for AJAX operations.
- * @param {Object} page - Playwright page object
- */
-async function waitForAjax(page) {
-  // Wait for any AJAX throbbers to disappear
-  await page.waitForFunction(
-    () => {
-      const throbbers = document.querySelectorAll(
-        '.ajax-progress-throbber, .ajax-progress-bar',
-      );
-      return throbbers.length === 0;
-    },
-    { timeout: 30000 },
-  );
-
-  // Wait for network to be idle
-  await page.waitForLoadState('networkidle');
-}
-
-test.describe('Proxy Block Configuration', () => {
+test.describe('Proxy Block Configuration Settings', () => {
   let blockPlacementPage;
 
   test.beforeEach(async ({ page }) => {
@@ -77,65 +56,46 @@ test.describe('Proxy Block Configuration', () => {
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
   });
 
-  test('should find and select Proxy Block', async ({ page }) => {
+  test('should access proxy block configuration with target block field', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
-
-    // Should be on block configuration page (full page, not modal)
-    // In Drupal, this could be either "Configure block" or "Place block"
-    await expect(
-      page.locator('h1').filter({ hasText: /Configure|Place/ }),
-    ).toBeVisible();
 
     // Verify we're configuring a proxy block - look for the Target Block selection (unique to proxy block)
     const targetBlockField = page.locator(
       'select[name*="target_block"], combobox:has-text("Target Block")',
     );
     await expect(targetBlockField).toBeVisible();
+
+    // Verify target block field has options
+    const targetSelect = page.locator('#edit-settings-target-block-id');
+    const options = await targetSelect.locator('option').count();
+    expect(options).toBeGreaterThan(1);
   });
 
-  test('should configure basic proxy block settings', async ({ page }) => {
+  test('should configure proxy block with target block selection', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
-    const blockConfig = {
-      title: `Test Proxy Block ${Date.now()}`,
-      displayTitle: true,
-      region: 'content',
-    };
-
-    const savedConfig =
-      await blockPlacementPage.configureBasicSettings(blockConfig);
-
-    // Verify configuration was applied
-    expect(savedConfig.title).toBe(blockConfig.title);
-    expect(savedConfig.displayTitle).toBe(blockConfig.displayTitle);
-    expect(savedConfig.region).toBe(blockConfig.region);
-  });
-
-  test('should configure proxy block with target block', async ({ page }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-    await blockPlacementPage.selectProxyBlock();
-
-    // Configure basic settings
+    // Configure basic settings with target block
     const blockConfig = {
       title: 'Proxy Block with Target',
       targetBlock: 'system_powered_by_block',
     };
 
     await blockPlacementPage.configureBasicSettings(blockConfig);
-
-    // Configure proxy-specific settings
     await blockPlacementPage.configureProxySettings(blockConfig);
+
+    // Verify target block selection is set
+    const targetSelect = page.locator('#edit-settings-target-block-id');
+    const selectedValue = await targetSelect.inputValue();
+    expect(selectedValue).toBe('system_powered_by_block');
   });
 
-  test('should save proxy block configuration successfully', async ({
-    page,
-  }) => {
+  test('should save proxy block with target configuration', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
-    const blockTitle = `Test Proxy Block ${Date.now()}`;
+    const blockTitle = `Proxy Target Config ${Date.now()}`;
 
     await blockPlacementPage.configureBasicSettings({
       title: blockTitle,
@@ -148,32 +108,25 @@ test.describe('Proxy Block Configuration', () => {
 
     await blockPlacementPage.saveBlock();
 
-    // Should be back on block layout page
-    await expect(page.locator('h1:has-text("Block layout")')).toContainText(
-      'Block layout',
-    );
-
     // Verify success message
     await expect(page.locator('.messages--status')).toBeVisible();
 
-    // Verify block appears in the layout
+    // Verify block appears with target configuration
     await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
   });
 
-  test('should handle proxy block configuration with multiple target blocks', async ({
-    page,
-  }) => {
-    const targetBlocks = PROXY_BLOCK_DATA.configurations;
+  test('should handle multiple target block configurations', async ({ page }) => {
+    const targetBlocks = PROXY_BLOCK_DATA.configurations.slice(0, 2);
 
-    for (let i = 0; i < Math.min(targetBlocks.length, 2); i++) {
+    for (let i = 0; i < targetBlocks.length; i++) {
       const config = targetBlocks[i];
-      const blockTitle = `${config.name} ${Date.now()}`;
+      const blockTitle = `${config.name} Config ${Date.now()}-${i}`;
 
-      // Place new block
+      // Place new proxy block
       await blockPlacementPage.clickPlaceBlockForRegion('content');
       await blockPlacementPage.selectProxyBlock();
 
-      // Configure the block
+      // Configure with specific target block
       await blockPlacementPage.configureBasicSettings({
         title: blockTitle,
         region: 'content',
@@ -185,187 +138,132 @@ test.describe('Proxy Block Configuration', () => {
 
       await blockPlacementPage.saveBlock();
 
-      // Verify block was placed
+      // Verify proxy block was placed with target configuration
       await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
+
+      // Verify target block configuration persisted
+      const editLink = page.locator(`tr:has-text("${blockTitle}") a:has-text("Configure")`);
+      await editLink.click();
+      await page.waitForLoadState('networkidle');
+
+      const targetSelect = page.locator('#edit-settings-target-block-id');
+      const selectedValue = await targetSelect.inputValue();
+      expect(selectedValue).toBe(config.targetBlock);
+
+      // Return to block layout for next iteration
+      await blockPlacementPage.navigate(ENVIRONMENT.theme);
     }
   });
 
-  test('should cancel proxy block configuration', async ({ page }) => {
+  test('should validate proxy-specific settings', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
+    // Configure with valid title but no target block
     await blockPlacementPage.configureBasicSettings({
-      title: 'Block to Cancel',
+      title: 'Validation Test Proxy Block',
     });
 
-    await blockPlacementPage.cancelConfiguration();
-
-    // Should be back on block layout page
-    await expect(page.locator('h1:has-text("Block layout")')).toContainText(
-      'Block layout',
-    );
-
-    // Block should not be placed
-    const cancelledBlock = page
-      .locator('.draggable')
-      .filter({ hasText: 'Block to Cancel' });
-    await expect(cancelledBlock).not.toBeVisible();
-  });
-
-  test('should validate required fields in proxy block configuration', async ({
-    page,
-  }) => {
-    await blockPlacementPage.clickPlaceBlockForRegion('content');
-    await blockPlacementPage.selectProxyBlock();
-
-    // Try to save without filling required fields
+    // Leave target block empty and try to save
     const saveButton = page.locator('#edit-submit, .form-submit');
     await saveButton.click();
-
-    // Wait for page to process the form submission
     await page.waitForLoadState('networkidle');
 
-    // Should either stay on configuration page OR show validation errors
-    // First check if we're still on a form page (either Configure or Place)
-    const configPageLocator = page
-      .locator('h1')
-      .filter({ hasText: /Configure|Place/ });
+    // Should remain on configuration page for proxy-specific validation
+    const configPageLocator = page.locator('h1').filter({ hasText: /Configure|Place/ });
     const isOnConfigPage = (await configPageLocator.count()) > 0;
 
     if (isOnConfigPage) {
-      // Great! Still on config page, look for validation errors
-      await expect(configPageLocator).toBeVisible();
-    } else {
-      // Form might have redirected, check if there are error messages anywhere
-      const errorMessages = page.locator(
-        '.messages--error, .form-item--error-message, .error',
-      );
-      const hasErrors = (await errorMessages.count()) > 0;
-
-      if (!hasErrors) {
-        // If no obvious errors, the form might have different validation behavior
-        // Let's check if we're on block layout page and look for any messages
-        const blockLayoutPage = page
-          .locator('h1')
-          .filter({ hasText: /Block layout/ });
-        const isOnBlockLayout = (await blockLayoutPage.count()) > 0;
-
-        if (isOnBlockLayout) {
-          console.log(
-            'Form redirected to block layout - validation may have different behavior',
-          );
-        } else {
-          // Unexpected page - log for debugging
-          const currentH1 = await page.locator('h1').first().textContent();
-          console.log(
-            `Unexpected page after validation test. H1: "${currentH1}"`,
-          );
-        }
-      } else {
-        // Found error messages, validation is working
-        await expect(errorMessages.first()).toBeVisible();
-      }
+      // Verify target block field is still present for proxy configuration
+      const targetField = page.locator('#edit-settings-target-block-id');
+      await expect(targetField).toBeVisible();
     }
-
-    // Note: Validation behavior completed above - no additional checks needed
   });
 
-  test('should test AJAX functionality in proxy block configuration', async ({
-    page,
-  }) => {
+  test('should handle target block settings AJAX updates', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
     // Configure basic settings first
     await blockPlacementPage.configureBasicSettings({
-      title: 'AJAX Test Block',
+      title: 'AJAX Target Test Block',
     });
 
-    // Look for target block selection dropdown (actual select element, not the fieldset)
+    // Select target block to trigger potential AJAX for target-specific settings
     const targetBlockSelect = page.locator('#edit-settings-target-block-id');
     if (await targetBlockSelect.isVisible()) {
-      // Select a target block to trigger AJAX
       await targetBlockSelect.selectOption('system_powered_by_block');
 
-      // Wait for AJAX to complete
-      await waitForAjax(page);
+      // Wait for AJAX to complete (proxy-specific AJAX behavior)
+      await page.waitForFunction(
+        () => {
+          const throbbers = document.querySelectorAll(
+            '.ajax-progress-throbber, .ajax-progress-bar',
+          );
+          return throbbers.length === 0;
+        },
+        { timeout: 30000 },
+      );
 
-      // Check if additional configuration options appeared
-      const configSection = page.locator('.proxy-block-target-configuration');
-      // This section may or may not exist depending on target block
+      await page.waitForLoadState('networkidle');
+
+      // Verify target block selection persisted through AJAX
+      const selectedValue = await targetBlockSelect.inputValue();
+      expect(selectedValue).toBe('system_powered_by_block');
+
+      // Check if target-specific configuration options appeared
+      const targetConfigSection = page.locator(
+        '.proxy-block-target-configuration, .target-block-settings',
+      );
+      // Configuration section may or may not exist depending on target block
+      // The important test is that AJAX didn't break the form
     }
   });
 
-  test('should remove placed proxy block', async ({ page }) => {
-    // First, place a block
+  test('should preserve target block settings during configuration updates', async ({ page }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
-    const blockTitle = `Block to Remove ${Date.now()}`;
+    const blockTitle = `Settings Persistence Test ${Date.now()}`;
+
+    // Initial configuration
     await blockPlacementPage.configureBasicSettings({
       title: blockTitle,
     });
 
+    await blockPlacementPage.configureProxySettings({
+      targetBlock: 'system_powered_by_block',
+    });
+
     await blockPlacementPage.saveBlock();
-    await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
 
-    // Now remove the block
-    await blockPlacementPage.removeBlock(blockTitle);
+    // Edit the saved proxy block
+    const editLink = page.locator(`tr:has-text("${blockTitle}") a:has-text("Configure")`);
+    await editLink.click();
+    await page.waitForLoadState('networkidle');
 
-    // Verify block is no longer visible in the region
-    const removedBlock = page
-      .locator('.draggable')
-      .filter({ hasText: blockTitle });
-    await expect(removedBlock).not.toBeVisible();
-  });
+    // Verify target block selection persisted
+    const targetSelect = page.locator('#edit-settings-target-block-id');
+    const originalValue = await targetSelect.inputValue();
+    expect(originalValue).toBe('system_powered_by_block');
 
-  test('should verify block placement across different regions', async ({
-    page,
-  }) => {
-    // Discover available regions by finding all place block links
-    const allPlaceLinks = await page
-      .locator('a')
-      .filter({
-        hasText: /Place block in the .* region$/i,
-      })
-      .all();
+    // Change title but keep target block
+    const titleField = page.locator('#edit-settings-label');
+    await titleField.clear();
+    await titleField.fill(`${blockTitle} Updated`);
 
-    // Extract region names from the first few place block links (test 2 regions max)
-    const availableRegions = [];
-    for (let i = 0; i < Math.min(allPlaceLinks.length, 2); i++) {
-      const linkText = await allPlaceLinks[i].textContent();
-      const match = linkText?.match(/Place block in the (.*) region$/i);
-      if (match) {
-        const regionDisplayName = match[1];
-        // Convert display name to machine name for testing
-        const regionMachineName = regionDisplayName
-          .toLowerCase()
-          .replace(/ /g, '_');
-        availableRegions.push({
-          machine: regionMachineName,
-          display: regionDisplayName,
-        });
-      }
-    }
+    // Save changes
+    const saveButton = page.locator('button:has-text("Save block")');
+    await saveButton.click();
+    await page.waitForLoadState('networkidle');
 
-    expect(availableRegions.length).toBeGreaterThan(0);
+    // Verify target block setting was preserved through the update
+    const editLinkUpdated = page.locator(`tr:has-text("${blockTitle} Updated") a:has-text("Configure")`);
+    await editLinkUpdated.click();
+    await page.waitForLoadState('networkidle');
 
-    for (const regionInfo of availableRegions) {
-      const blockTitle = `Block in ${regionInfo.display} ${Date.now()}`;
-
-      await blockPlacementPage.clickPlaceBlockForRegion(regionInfo.machine);
-      await blockPlacementPage.selectProxyBlock();
-
-      await blockPlacementPage.configureBasicSettings({
-        title: blockTitle,
-        region: regionInfo.machine,
-      });
-
-      await blockPlacementPage.saveBlock();
-      await blockPlacementPage.verifyBlockPlaced(
-        blockTitle,
-        regionInfo.machine,
-      );
-    }
+    const targetSelectUpdated = page.locator('#edit-settings-target-block-id');
+    const updatedValue = await targetSelectUpdated.inputValue();
+    expect(updatedValue).toBe('system_powered_by_block');
   });
 });

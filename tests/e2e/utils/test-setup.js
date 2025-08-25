@@ -3,7 +3,7 @@
  * Shared test setup utilities to avoid duplication and conflicts.
  */
 
-const { execDrushInTestSite } = require('@lullabot/playwright-drupal');
+const { execDrushInTestSite } = require('./drush-helper');
 
 /**
  * Create a unique admin user for test isolation.

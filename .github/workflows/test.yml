@@ -82,10 +82,8 @@ jobs:
       - name: Configure Drupal project
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          # Configure platform PHP version
           composer config platform.php ${{ matrix.php-version }}
 
-          # Add essential development dependencies for Drupal testing
           composer require --no-interaction \
             drupal/core-dev \
             drupal/coder \
@@ -107,7 +105,6 @@ jobs:
           composer config --no-plugins allow-plugins.phpstan/extension-installer true
           composer --no-interaction --no-progress install
 
-          # Install Node.js dependencies for E2E tests
           npm install --include=dev
 
       - name: Run PHPCS
@@ -124,125 +121,20 @@ jobs:
       - name: Install Drupal
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          echo "=== Installing Drupal site ==="
-          echo "Working directory: $(pwd)"
-          echo "Web directory exists: $(ls -la web/ | head -5)"
+          vendor/bin/drush site-install standard \
+            --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
+            --account-name=admin \
+            --account-pass=admin \
+            --site-name="Drupal Test Site" \
+            --yes
 
-          # Test database connectivity first
-          echo "=== Testing database connectivity ==="
-          php -r "
-            try {
-              \$pdo = new PDO('mysql:host=127.0.0.1;port=3306;dbname=drupal', 'drupal', 'drupal');
-              echo 'Database connection successful\n';
-            } catch (PDOException \$e) {
-              echo 'Database connection failed: ' . \$e->getMessage() . '\n';
-              exit(1);
-            }
-          "
-
-          # Ensure proper permissions
-          echo "=== Setting up permissions ==="
-          chmod 755 web/sites/default
-          rm -f web/sites/default/settings.php
-
-          # Debug environment and drush setup
-          echo "=== Environment debugging ==="
-          echo "PHP version: $(php --version | head -1)"
-          echo "Current working directory: $(pwd)"
-          echo "Checking if vendor directory exists:"
-          ls -la vendor/ | head -5
-          echo "Checking if drush exists in vendor/bin:"
-          ls -la vendor/bin/drush || echo "drush not found in vendor/bin"
-          echo "Checking vendor/drush/drush directory:"
-          ls -la vendor/drush/drush/ | head -5 || echo "vendor/drush/drush directory not found"
-
-          # Try calling drush.php directly since shell wrappers aren't working
-          echo "=== Testing direct drush.php execution ==="
-
-          # Find the actual drush.php file
-          if [ -f "vendor/drush/drush/drush.php" ]; then
-            echo "Found drush.php, testing direct execution..."
-
-            # Test version first
-            php vendor/drush/drush/drush.php --version || echo "Direct drush.php version failed"
-
-            # Use direct drush.php for installation
-            echo "=== Running site-install with direct drush.php ==="
-            set -x
-            DRUSH_EXIT_CODE=0
-            php vendor/drush/drush/drush.php site-install standard \
-              --root="$(pwd)/web" \
-              --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
-              --account-name=admin \
-              --account-pass=admin \
-              --site-name="Drupal Test Site" \
-              --yes \
-              --verbose \
-              --debug || DRUSH_EXIT_CODE=$?
-            set +x
-          else
-            echo "drush.php not found, trying alternative methods..."
-
-            # Look for drush executable in vendor/bin
-            if [ -f "vendor/bin/drush.php" ]; then
-              echo "Found drush.php in vendor/bin..."
-              set -x
-              DRUSH_EXIT_CODE=0
-              php vendor/bin/drush.php site-install standard \
-                --root="$(pwd)/web" \
-                --db-url=mysql://drupal:drupal@127.0.0.1:3306/drupal \
-                --account-name=admin \
-                --account-pass=admin \
-                --site-name="Drupal Test Site" \
-                --yes \
-                --verbose \
-                --debug || DRUSH_EXIT_CODE=$?
-              set +x
-            else
-              echo "Cannot find drush.php anywhere - installation will fail"
-              DRUSH_EXIT_CODE=1
-            fi
-          fi
-
-          # Check if installation succeeded
-          echo "=== Installation verification ==="
-          if [ -f "web/sites/default/settings.php" ]; then
-            echo "✓ settings.php created successfully"
-            echo "✓ Drupal installation completed"
-
-            # Verify drush status now works with direct drush.php
-            if [ -f "vendor/drush/drush/drush.php" ]; then
-              echo "Checking site status with direct drush.php..."
-              php vendor/drush/drush/drush.php --root="$(pwd)/web" status
-            elif [ -f "vendor/bin/drush.php" ]; then
-              echo "Checking site status with vendor/bin/drush.php..."
-              php vendor/bin/drush.php --root="$(pwd)/web" status
-            else
-              echo "Warning: Cannot find drush.php for status check"
-            fi
-          else
-            echo "✗ settings.php not found - installation failed"
-            echo "Exit code from drush: $DRUSH_EXIT_CODE"
-            echo "Directory contents:"
-            ls -la web/sites/default/
-            exit 1
-          fi
+          vendor/bin/drush status
 
       - name: Enable module
         working-directory: ${{ env.DRUPAL_ROOT }}
         run: |
-          # Use direct drush.php for consistency
-          if [ -f "vendor/drush/drush/drush.php" ]; then
-            php vendor/drush/drush/drush.php --root="$(pwd)/web" cache:rebuild
-            php vendor/drush/drush/drush.php --root="$(pwd)/web" pm:enable ${{ env.MODULE_NAME }} --yes
-          elif [ -f "vendor/bin/drush.php" ]; then
-            php vendor/bin/drush.php --root="$(pwd)/web" cache:rebuild
-            php vendor/bin/drush.php --root="$(pwd)/web" pm:enable ${{ env.MODULE_NAME }} --yes
-          else
-            echo "Cannot find drush.php - trying fallback approach"
-            php vendor/bin/drush --root="$(pwd)/web" cache:rebuild
-            php vendor/bin/drush --root="$(pwd)/web" pm:enable ${{ env.MODULE_NAME }} --yes
-          fi
+          vendor/bin/drush cache:rebuild
+          vendor/bin/drush pm:enable ${{ env.MODULE_NAME }} --yes
 
       - name: Copy deprecation ignore file
         working-directory: ${{ env.DRUPAL_ROOT }}
@@ -258,7 +150,6 @@ jobs:
 
       - name: Start ChromeDriver
         run: |
-          # ChromeDriver is already installed with Chrome
           chromedriver --port=9515 &
           sleep 2
 
@@ -341,16 +232,14 @@ jobs:
         run: |
           echo "=== Verifying Drupal installation ==="
 
-          # Check site status
           echo "Checking drush status..."
-          php vendor/bin/drush --root="$(pwd)/web" status
+          vendor/bin/drush status
 
-          # Verify homepage works
           echo "Checking homepage..."
           curl -s "http://127.0.0.1:8080/" | head -c 200
           echo ""
 
-          # Check that login page shows actual login form, not installer
+          # Verify login page shows form, not installer redirect
           echo "Checking login page..."
           if curl -s "http://127.0.0.1:8080/user/login" | grep -q "install.php"; then
             echo "ERROR: Site is redirecting to installer - installation failed"
@@ -359,22 +248,11 @@ jobs:
             echo "Login page accessible (not redirecting to installer)"
           fi
 
-      - name: Run Playwright E2E Tests (Basic)
+      - name: Run Playwright E2E Tests
         if: matrix.drupal-core == '11-dev'
         working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
         run: |
-          # Run basic CI-compatible tests
-          npx playwright test tests/e2e/tests/ci-basic.spec.js
-        env:
-          DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
-          CI: 'true'
-
-      - name: Run Playwright E2E Tests (Advanced)
-        if: matrix.drupal-core == '11-dev'
-        working-directory: ${{ env.DRUPAL_ROOT }}/${{ env.MODULE_PATH }}
-        run: |
-          # Run actual proxy block functionality tests (start with block-placement only)
-          npx playwright test tests/e2e/tests/block-placement.spec.js
+          npx playwright test tests/e2e/tests/
         env:
           DRUPAL_BASE_URL: 'http://127.0.0.1:8080'
           CI: 'true'

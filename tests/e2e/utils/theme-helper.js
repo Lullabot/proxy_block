@@ -3,7 +3,7 @@
  * Theme detection and handling utilities.
  */
 
-const { execDrushInTestSite } = require('@lullabot/playwright-drupal');
+const { execDrushInTestSite } = require('./drush-helper');
 
 /**
  * Get the active theme from Drupal.

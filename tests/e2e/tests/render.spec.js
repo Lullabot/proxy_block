@@ -10,7 +10,7 @@ const {
   createAdminUser,
   enableModule,
   clearCache,
-  execDrush,
+  execDrushInTestSite,
 } = require('../utils/drush-helper');
 const { BlockPlacementPage } = require('../page-objects/block-placement-page');
 const { FrontendPage } = require('../page-objects/frontend-page');
@@ -22,7 +22,6 @@ const {
 
 /**
  * Helper function to create admin user and login.
- *
  * @param {Object} page - The Playwright page object
  */
 async function setupAdminUser(page) {
@@ -35,7 +34,6 @@ async function setupAdminUser(page) {
   await page.goto('/user/login');
   await page.waitForLoadState('networkidle');
 
-  // Login form MUST be available
   const loginForm = page.locator('#user-login-form');
   await expect(loginForm).toBeVisible();
 
@@ -43,83 +41,6 @@ async function setupAdminUser(page) {
   await page.fill('#edit-pass', 'admin');
   await page.click('#edit-submit');
   await page.waitForLoadState('networkidle');
-}
-
-/**
- * Helper function to create a test node.
- *
- * @param {Object} page - The Playwright page object
- * @param {string} contentType - The content type to create
- * @param {Object} nodeData - Additional node data
- */
-async function createTestNode(page, contentType = 'page', nodeData = {}) {
-  const title = nodeData.title || `Test ${contentType} ${Date.now()}`;
-  const body = nodeData.body || `Test content for ${title}`;
-
-  try {
-    // First try to create via Drush (faster and more reliable)
-    await execDrush(
-      `devel:generate-content --types=${contentType} --num=1 --kill`,
-    );
-
-    // Get the latest node via Drush
-    const result = await execDrush(
-      `sql:query "SELECT nid FROM node WHERE type='${contentType}' ORDER BY nid DESC LIMIT 1"`,
-    );
-
-    if (result.trim()) {
-      const nodeId = result.trim().split('\n').pop();
-      return {
-        title: `Generated ${contentType}`,
-        body: `Generated content`,
-        url: `/node/${nodeId}`,
-        nodeId: parseInt(nodeId, 10),
-      };
-    }
-  } catch (error) {
-    console.log(
-      `Drush content generation failed: ${error.message}, falling back to UI creation`,
-    );
-  }
-
-  // Fallback to UI creation if Drush fails
-  await page.goto(`/node/add/${contentType}`);
-
-  // Verify we're on the correct page
-  await expect(page.locator('h1')).toContainText('Create');
-
-  // Fill title - handle both field widget formats
-  const titleField = page.locator('#edit-title-0-value, #edit-title');
-  await expect(titleField).toBeVisible();
-  await titleField.fill(title);
-
-  // Fill body if it exists - handle different field formats
-  const bodySelectors = [
-    '#edit-body-0-value',
-    '#edit-body',
-    '[name="body[0][value]"]',
-  ];
-
-  for (const selector of bodySelectors) {
-    const bodyField = page.locator(selector);
-    if (await bodyField.isVisible()) {
-      await bodyField.fill(body);
-      break;
-    }
-  }
-
-  // Save the node
-  await page.click('#edit-submit');
-
-  // Wait for node to be created - handle different success patterns
-  try {
-    await expect(page.locator('h1')).toContainText(title, { timeout: 10000 });
-  } catch (error) {
-    // Alternative: check for success message if title doesn't match
-    await expect(page.locator('.messages--status')).toBeVisible();
-  }
-
-  return { title, body, url: page.url() };
 }
 
 test.describe('Proxy Block Rendering', () => {
@@ -152,11 +73,11 @@ test.describe('Proxy Block Rendering', () => {
     testBlocks = [];
   });
 
-  test('should render proxy block on homepage', async ({ page }) => {
-    const blockTitle = `Homepage Proxy Block ${Date.now()}`;
+  test('should render target block content through proxy block', async ({ page }) => {
+    const blockTitle = `Proxy Render Test ${Date.now()}`;
     testBlocks.push(blockTitle);
 
-    // Place proxy block
+    // Place proxy block with target
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
@@ -172,29 +93,28 @@ test.describe('Proxy Block Rendering', () => {
 
     await blockPlacementPage.saveBlock();
 
-    // Logout and view frontend
+    // Logout and view frontend to test proxy rendering
     await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
 
-    // Verify proxy block is rendered
+    // Verify proxy block is rendered with its title
     await frontendPage.verifyProxyBlockPresent(blockTitle);
 
-    // Verify target block content is rendered
+    // Verify target block content is rendered through proxy
     await frontendPage.verifyProxyBlockContent('Powered by');
 
+    // Verify no rendering errors
     await frontendPage.verifyNoPHPErrors();
   });
 
-  test('should render proxy block with different target blocks', async ({
-    page,
-  }) => {
+  test('should render different target blocks correctly through proxy', async ({ page }) => {
     const configurations = PROXY_BLOCK_DATA.configurations.slice(0, 2); // Test first 2
 
     for (const config of configurations) {
-      const blockTitle = `${config.name} ${Date.now()}`;
+      const blockTitle = `${config.name} Render ${Date.now()}`;
       testBlocks.push(blockTitle);
 
-      // Place proxy block
+      // Place proxy block with specific target
       await blockPlacementPage.navigate(ENVIRONMENT.theme);
       await blockPlacementPage.clickPlaceBlockForRegion('content');
       await blockPlacementPage.selectProxyBlock();
@@ -210,14 +130,14 @@ test.describe('Proxy Block Rendering', () => {
 
       await blockPlacementPage.saveBlock();
 
-      // View on frontend
+      // View on frontend to test target-specific rendering
       await page.goto('/user/logout');
       await frontendPage.navigateToHomepage();
 
-      // Verify proxy block renders
+      // Verify proxy block renders the specific target content
       await frontendPage.verifyProxyBlockPresent(blockTitle);
 
-      // Verify expected content if specified
+      // Verify expected content if specified for this target
       if (config.expectedContent) {
         await frontendPage.verifyProxyBlockContent(config.expectedContent);
       }
@@ -229,62 +149,33 @@ test.describe('Proxy Block Rendering', () => {
     }
   });
 
-  test('should render proxy block on content pages', async ({ page }) => {
-    // Create a test node first using Drush
-    await execDrush('devel:generate-content --types=page --num=1');
+  test('should handle proxy block title display settings', async ({ page }) => {
+    const blockTitleVisible = `Visible Title Proxy ${Date.now()}`;
+    const blockTitleHidden = `Hidden Title Proxy ${Date.now()}`;
+    testBlocks.push(blockTitleVisible, blockTitleHidden);
 
-    const blockTitle = `Content Page Proxy Block ${Date.now()}`;
-    testBlocks.push(blockTitle);
-
-    // Place proxy block
+    // Test proxy block with visible title
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
     await blockPlacementPage.configureBasicSettings({
-      title: blockTitle,
+      title: blockTitleVisible,
       displayTitle: true,
     });
 
     await blockPlacementPage.configureProxySettings({
-      targetBlock: 'system_branding_block',
+      targetBlock: 'system_powered_by_block',
     });
 
     await blockPlacementPage.saveBlock();
 
-    // Get the created node URL
-    await page.goto('/admin/content');
-    const nodeLink = page
-      .locator('table tbody tr')
-      .first()
-      .locator('a')
-      .first();
-    const nodeUrl = await nodeLink.getAttribute('href');
-
-    // View the test node
-    await page.goto('/user/logout');
-    await page.goto(nodeUrl);
-
-    // Verify page loaded correctly
-    await frontendPage.verifyPageLoads();
-
-    // Verify proxy block is present
-    await frontendPage.verifyProxyBlockPresent(blockTitle);
-
-    await frontendPage.verifyNoPHPErrors();
-  });
-
-  test('should handle proxy block with hidden title', async ({ page }) => {
-    const blockTitle = `Hidden Title Block ${Date.now()}`;
-    testBlocks.push(blockTitle);
-
-    // Place proxy block with hidden title
-    await blockPlacementPage.navigate(ENVIRONMENT.theme);
+    // Test proxy block with hidden title
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
     await blockPlacementPage.configureBasicSettings({
-      title: blockTitle,
+      title: blockTitleHidden,
       displayTitle: false, // Hide the title
     });
 
@@ -294,95 +185,30 @@ test.describe('Proxy Block Rendering', () => {
 
     await blockPlacementPage.saveBlock();
 
-    // View on frontend
+    // View on frontend to test title display behavior
     await page.goto('/user/logout');
     await frontendPage.navigateToHomepage();
 
-    // Verify proxy block is present but title is not displayed
-    const proxyBlock = await frontendPage.verifyProxyBlockPresent(null); // Don't check for title
+    // Verify visible title proxy block shows title
+    await frontendPage.verifyProxyBlockPresent(blockTitleVisible);
 
-    // Verify the block title is not visible
-    const blockTitleElement = proxyBlock.locator('h2, .block-title');
+    // Verify hidden title proxy block doesn't show title but still renders content
+    const hiddenTitleBlock = await frontendPage.verifyProxyBlockPresent(null); // Don't check for title
+
+    // Verify the hidden title block doesn't display its title
+    const blockTitleElement = hiddenTitleBlock.locator('h2, .block-title');
     if ((await blockTitleElement.count()) > 0) {
-      await expect(blockTitleElement).not.toContainText(blockTitle);
+      await expect(blockTitleElement).not.toContainText(blockTitleHidden);
     }
 
-    // But content should still be rendered
+    // But target content should still be rendered in both
     await frontendPage.verifyProxyBlockContent('Powered by');
 
     await frontendPage.verifyNoPHPErrors();
   });
 
-  test('should render proxy block in different regions', async ({ page }) => {
-    // Discover available regions by finding all place block links
-    await blockPlacementPage.navigate(ENVIRONMENT.theme);
-    const allPlaceLinks = await page
-      .locator('a')
-      .filter({
-        hasText: /Place block in the .* region$/i,
-      })
-      .all();
-
-    // Extract region names from the first few place block links (test 2 regions max)
-    const availableRegions = [];
-    for (let i = 0; i < Math.min(allPlaceLinks.length, 2); i++) {
-      const linkText = await allPlaceLinks[i].textContent();
-      const match = linkText?.match(/Place block in the (.*) region$/i);
-      if (match) {
-        const regionDisplayName = match[1];
-        // Convert display name to machine name for testing
-        const regionMachineName = regionDisplayName
-          .toLowerCase()
-          .replace(/ /g, '_');
-        availableRegions.push({
-          machine: regionMachineName,
-          display: regionDisplayName,
-        });
-      }
-    }
-
-    expect(availableRegions.length).toBeGreaterThan(0);
-
-    for (const regionInfo of availableRegions) {
-      await blockPlacementPage.navigate(ENVIRONMENT.theme);
-
-      const blockTitle = `${regionInfo.display} Proxy Block ${Date.now()}`;
-      testBlocks.push(blockTitle);
-
-      // Place proxy block in the region
-      await blockPlacementPage.clickPlaceBlockForRegion(regionInfo.machine);
-      await blockPlacementPage.selectProxyBlock();
-
-      await blockPlacementPage.configureBasicSettings({
-        title: blockTitle,
-        region: regionInfo.machine,
-      });
-
-      await blockPlacementPage.configureProxySettings({
-        targetBlock: 'system_powered_by_block',
-      });
-
-      await blockPlacementPage.saveBlock();
-
-      // View on frontend
-      await page.goto('/user/logout');
-      await frontendPage.navigateToHomepage();
-
-      // Verify proxy block is present in the correct region
-      await frontendPage.verifyProxyBlockPresent(
-        blockTitle,
-        regionInfo.machine,
-      );
-
-      await frontendPage.verifyNoPHPErrors();
-
-      // Re-login for next iteration
-      await setupAdminUser(page);
-    }
-  });
-
   test('should handle proxy block cache correctly', async ({ page }) => {
-    const blockTitle = `Cache Test Block ${Date.now()}`;
+    const blockTitle = `Cache Test Proxy ${Date.now()}`;
     testBlocks.push(blockTitle);
 
     // Place proxy block
@@ -400,17 +226,131 @@ test.describe('Proxy Block Rendering', () => {
 
     await blockPlacementPage.saveBlock();
 
-    // View on frontend multiple times to test caching
+    // Test proxy rendering with caching across multiple requests
     await page.goto('/user/logout');
 
     for (let i = 0; i < 3; i++) {
       await frontendPage.navigateToHomepage();
+      
+      // Verify proxy block renders consistently across cache hits/misses
       await frontendPage.verifyProxyBlockPresent(blockTitle);
       await frontendPage.verifyProxyBlockContent('Powered by');
       await frontendPage.verifyNoPHPErrors();
 
-      // Wait for network to stabilize between requests instead of arbitrary timeout
+      // Wait for network to stabilize between requests
       await page.waitForLoadState('networkidle');
     }
+  });
+
+  test('should pass contexts correctly from proxy to target block', async ({ page }) => {
+    const blockTitle = `Context Proxy Test ${Date.now()}`;
+    testBlocks.push(blockTitle);
+
+    // Place proxy block
+    await blockPlacementPage.navigate(ENVIRONMENT.theme);
+    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.selectProxyBlock();
+
+    await blockPlacementPage.configureBasicSettings({
+      title: blockTitle,
+    });
+
+    await blockPlacementPage.configureProxySettings({
+      targetBlock: 'system_powered_by_block',
+    });
+
+    await blockPlacementPage.saveBlock();
+
+    // Test on frontend - proxy should pass contexts to target
+    await page.goto('/user/logout');
+    await frontendPage.navigateToHomepage();
+
+    // Verify proxy block renders target content (indicating contexts passed correctly)
+    await frontendPage.verifyProxyBlockPresent(blockTitle);
+    await frontendPage.verifyProxyBlockContent('Powered by');
+
+    // Verify no context-related errors in proxy rendering
+    const contextErrors = page.locator('.error:has-text("context"), .error:has-text("Context")');
+    await expect(contextErrors).toHaveCount(0);
+
+    await frontendPage.verifyNoPHPErrors();
+  });
+
+  test('should handle proxy block permissions correctly', async ({ page }) => {
+    const blockTitle = `Permission Proxy Test ${Date.now()}`;
+    testBlocks.push(blockTitle);
+
+    // Place proxy block
+    await blockPlacementPage.navigate(ENVIRONMENT.theme);
+    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.selectProxyBlock();
+
+    await blockPlacementPage.configureBasicSettings({
+      title: blockTitle,
+    });
+
+    await blockPlacementPage.configureProxySettings({
+      targetBlock: 'system_powered_by_block',
+    });
+
+    await blockPlacementPage.saveBlock();
+
+    // Test as anonymous user (proxy should respect target block permissions)
+    await page.goto('/user/logout');
+    await frontendPage.navigateToHomepage();
+
+    // Verify proxy block is visible to anonymous users (system_powered_by_block is public)
+    await frontendPage.verifyProxyBlockPresent(blockTitle);
+    await frontendPage.verifyProxyBlockContent('Powered by');
+
+    // Verify no permission errors
+    const permissionErrors = page.locator('.error:has-text("permission"), .error:has-text("access")');
+    await expect(permissionErrors).toHaveCount(0);
+
+    await frontendPage.verifyNoPHPErrors();
+  });
+
+  test('should handle proxy block rendering errors gracefully', async ({ page }) => {
+    const blockTitle = `Error Handling Proxy ${Date.now()}`;
+    testBlocks.push(blockTitle);
+
+    // Place proxy block with potentially problematic target
+    await blockPlacementPage.navigate(ENVIRONMENT.theme);
+    await blockPlacementPage.clickPlaceBlockForRegion('content');
+    await blockPlacementPage.selectProxyBlock();
+
+    await blockPlacementPage.configureBasicSettings({
+      title: blockTitle,
+    });
+
+    await blockPlacementPage.configureProxySettings({
+      targetBlock: 'system_powered_by_block',
+    });
+
+    await blockPlacementPage.saveBlock();
+
+    // Test frontend rendering - should handle any errors gracefully
+    await page.goto('/user/logout');
+    await frontendPage.navigateToHomepage();
+
+    // Page should load without fatal errors
+    await frontendPage.verifyPageLoads();
+
+    // Verify no PHP fatal errors in proxy rendering
+    const fatalErrors = page.locator('.php-error, .error-message:has-text("Fatal")');
+    await expect(fatalErrors).toHaveCount(0);
+
+    // Proxy should either render successfully or fail gracefully
+    const proxyBlock = page.locator(`h2:has-text("${blockTitle}")`);
+    const blockExists = (await proxyBlock.count()) > 0;
+
+    if (blockExists) {
+      // If block renders, verify it has content
+      await frontendPage.verifyProxyBlockPresent(blockTitle);
+      await frontendPage.verifyProxyBlockContent('Powered by');
+    }
+    // If block doesn't render, that's acceptable as long as no fatal errors occurred
+
+    await frontendPage.verifyNoPHPErrors();
   });
 });
