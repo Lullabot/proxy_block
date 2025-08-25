@@ -73,7 +73,9 @@ test.describe('Proxy Block Rendering', () => {
     testBlocks = [];
   });
 
-  test('should render target block content through proxy block', async ({ page }) => {
+  test('should render target block content through proxy block', async ({
+    page,
+  }) => {
     const blockTitle = `Proxy Render Test ${Date.now()}`;
     testBlocks.push(blockTitle);
 
@@ -107,7 +109,9 @@ test.describe('Proxy Block Rendering', () => {
     await frontendPage.verifyNoPHPErrors();
   });
 
-  test('should render different target blocks correctly through proxy', async ({ page }) => {
+  test('should render different target blocks correctly through proxy', async ({
+    page,
+  }) => {
     const configurations = PROXY_BLOCK_DATA.configurations.slice(0, 2); // Test first 2
 
     for (const config of configurations) {
@@ -231,7 +235,7 @@ test.describe('Proxy Block Rendering', () => {
 
     for (let i = 0; i < 3; i++) {
       await frontendPage.navigateToHomepage();
-      
+
       // Verify proxy block renders consistently across cache hits/misses
       await frontendPage.verifyProxyBlockPresent(blockTitle);
       await frontendPage.verifyProxyBlockContent('Powered by');
@@ -242,7 +246,9 @@ test.describe('Proxy Block Rendering', () => {
     }
   });
 
-  test('should pass contexts correctly from proxy to target block', async ({ page }) => {
+  test('should pass contexts correctly from proxy to target block', async ({
+    page,
+  }) => {
     const blockTitle = `Context Proxy Test ${Date.now()}`;
     testBlocks.push(blockTitle);
 
@@ -270,7 +276,9 @@ test.describe('Proxy Block Rendering', () => {
     await frontendPage.verifyProxyBlockContent('Powered by');
 
     // Verify no context-related errors in proxy rendering
-    const contextErrors = page.locator('.error:has-text("context"), .error:has-text("Context")');
+    const contextErrors = page.locator(
+      '.error:has-text("context"), .error:has-text("Context")',
+    );
     await expect(contextErrors).toHaveCount(0);
 
     await frontendPage.verifyNoPHPErrors();
@@ -304,13 +312,17 @@ test.describe('Proxy Block Rendering', () => {
     await frontendPage.verifyProxyBlockContent('Powered by');
 
     // Verify no permission errors
-    const permissionErrors = page.locator('.error:has-text("permission"), .error:has-text("access")');
+    const permissionErrors = page.locator(
+      '.error:has-text("permission"), .error:has-text("access")',
+    );
     await expect(permissionErrors).toHaveCount(0);
 
     await frontendPage.verifyNoPHPErrors();
   });
 
-  test('should handle proxy block rendering errors gracefully', async ({ page }) => {
+  test('should handle proxy block rendering errors gracefully', async ({
+    page,
+  }) => {
     const blockTitle = `Error Handling Proxy ${Date.now()}`;
     testBlocks.push(blockTitle);
 
@@ -337,7 +349,9 @@ test.describe('Proxy Block Rendering', () => {
     await frontendPage.verifyPageLoads();
 
     // Verify no PHP fatal errors in proxy rendering
-    const fatalErrors = page.locator('.php-error, .error-message:has-text("Fatal")');
+    const fatalErrors = page.locator(
+      '.php-error, .error-message:has-text("Fatal")',
+    );
     await expect(fatalErrors).toHaveCount(0);
 
     // Proxy should either render successfully or fail gracefully

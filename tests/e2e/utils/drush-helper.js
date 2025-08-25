@@ -1,7 +1,7 @@
 /**
  * @file
  * Custom Drush execution utilities for E2E tests.
- * 
+ *
  * Replaces problematic @lullabot/playwright-drupal imports with
  * standard Node.js child_process execution patterns.
  */
@@ -11,30 +11,30 @@ const path = require('path');
 
 /**
  * Execute Drush commands in the Drupal site.
- * 
+ *
  * @param {string} command - Drush command to execute (without 'drush' prefix)
  * @param {Object} options - Execution options
  * @return {string} Command output
  */
 async function execDrushInTestSite(command, options = {}) {
-  // Go to the Drupal root directory (/var/www/html) 
+  // Go to the Drupal root directory (/var/www/html)
   const drupalRoot = '/var/www/html';
-  
+
   const defaults = {
     cwd: drupalRoot,
     encoding: 'utf8',
     timeout: 30000, // 30 second timeout
     stdio: 'pipe',
-    ...options
+    ...options,
   };
 
   try {
     // Use the known drush location
     const drushCommand = `vendor/bin/drush ${command}`;
-    
+
     // Execute synchronously to match the expected API
     const result = execSync(drushCommand, defaults);
-    
+
     // Return trimmed output as string
     return result.toString().trim();
   } catch (error) {
@@ -42,7 +42,7 @@ async function execDrushInTestSite(command, options = {}) {
     console.error(`Drush command failed: ${command}`);
     console.error(`Error: ${error.message}`);
     console.error(`Working directory: ${drupalRoot}`);
-    
+
     // Re-throw with more context
     throw new Error(`Drush execution failed: ${command} - ${error.message}`);
   }
@@ -50,7 +50,7 @@ async function execDrushInTestSite(command, options = {}) {
 
 /**
  * Execute Drush commands asynchronously (for compatibility).
- * 
+ *
  * @param {string} command - Drush command to execute
  * @param {Object} options - Execution options
  * @return {Promise<string>} Command output
@@ -68,7 +68,7 @@ async function execDrushAsync(command, options = {}) {
 
 /**
  * Check if Drush is available and working.
- * 
+ *
  * @return {boolean} Whether Drush is available
  */
 async function isDrushAvailable() {
@@ -83,7 +83,7 @@ async function isDrushAvailable() {
 
 /**
  * Get Drupal site status information.
- * 
+ *
  * @return {Object} Site status information
  */
 async function getSiteStatus() {
@@ -98,7 +98,7 @@ async function getSiteStatus() {
 
 /**
  * Enable a module if it's not already enabled.
- * 
+ *
  * @param {string} moduleName - Module machine name
  * @return {boolean} Whether the module was enabled successfully
  */
@@ -114,7 +114,7 @@ async function enableModule(moduleName) {
 
 /**
  * Clear all Drupal caches.
- * 
+ *
  * @return {boolean} Whether cache clearing succeeded
  */
 async function clearCache() {
@@ -129,32 +129,41 @@ async function clearCache() {
 
 /**
  * Create an admin user for testing.
- * 
+ *
  * @param {string} username - Username (defaults to 'admin')
  * @param {string} password - Password (defaults to 'admin')
  * @param {string} email - Email (defaults to admin@example.com)
  * @return {Object} User credentials
  */
-async function createAdminUser(username = 'admin', password = 'admin', email = 'admin@example.com') {
+async function createAdminUser(
+  username = 'admin',
+  password = 'admin',
+  email = 'admin@example.com',
+) {
   try {
     // Try to create user (might already exist)
     try {
-      await execDrushInTestSite(`user:create ${username} --mail="${email}" --password="${password}"`);
+      await execDrushInTestSite(
+        `user:create ${username} --mail="${email}" --password="${password}"`,
+      );
     } catch (createError) {
       // User might already exist, try to reset password instead
       await execDrushInTestSite(`user:password ${username} "${password}"`);
     }
-    
+
     // Ensure user has admin role
     await execDrushInTestSite(`user:role:add administrator ${username}`);
-    
+
     return {
       username,
       password,
       email,
     };
   } catch (error) {
-    console.error(`Failed to create/setup admin user ${username}:`, error.message);
+    console.error(
+      `Failed to create/setup admin user ${username}:`,
+      error.message,
+    );
     return {
       username,
       password,
@@ -165,7 +174,7 @@ async function createAdminUser(username = 'admin', password = 'admin', email = '
 
 /**
  * Delete a user account.
- * 
+ *
  * @param {string} username - Username to delete
  * @return {boolean} Whether deletion succeeded
  */

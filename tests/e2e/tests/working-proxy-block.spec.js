@@ -10,10 +10,7 @@ const {
   enableModule,
   clearCache,
 } = require('../utils/drush-helper');
-const {
-  TIMEOUTS,
-  ENVIRONMENT,
-} = require('../utils/constants');
+const { TIMEOUTS, ENVIRONMENT } = require('../utils/constants');
 
 // Drupal site base URL from environment or default
 const baseURL =
@@ -69,7 +66,9 @@ test.describe('Proxy Block Target Configuration', () => {
     expect(options).toBeGreaterThan(1); // At least default + available blocks
 
     // Verify specific expected target blocks are available
-    const poweredByOption = targetSelect.locator('option[value="system_powered_by_block"]');
+    const poweredByOption = targetSelect.locator(
+      'option[value="system_powered_by_block"]',
+    );
     await expect(poweredByOption).toBeAttached();
   });
 
@@ -106,18 +105,26 @@ test.describe('Proxy Block Target Configuration', () => {
     await expect(successMessage).toBeVisible({ timeout: TIMEOUTS.DEFAULT });
 
     // Navigate back to edit and verify target block is persisted
-    await page.goto(`${baseURL}/admin/structure/block/list/${ENVIRONMENT.theme}`);
-    const editLink = page.locator(`tr:has-text("${blockTitle}") a:has-text("Configure")`);
+    await page.goto(
+      `${baseURL}/admin/structure/block/list/${ENVIRONMENT.theme}`,
+    );
+    const editLink = page.locator(
+      `tr:has-text("${blockTitle}") a:has-text("Configure")`,
+    );
     await editLink.click();
     await page.waitForLoadState('networkidle');
 
     // Verify target block selection is preserved
-    const persistedTargetSelect = page.locator('#edit-settings-target-block-id');
+    const persistedTargetSelect = page.locator(
+      '#edit-settings-target-block-id',
+    );
     const selectedValue = await persistedTargetSelect.inputValue();
     expect(selectedValue).toBe('system_powered_by_block');
   });
 
-  test('should render target block content through proxy block', async ({ page }) => {
+  test('should render target block content through proxy block', async ({
+    page,
+  }) => {
     const blockTitle = `Proxy Render Test ${testId}`;
 
     // Configure proxy block with target
@@ -154,11 +161,15 @@ test.describe('Proxy Block Target Configuration', () => {
     await expect(targetContent).toBeVisible({ timeout: TIMEOUTS.DEFAULT });
 
     // Verify no PHP errors in proxy rendering
-    const phpErrors = page.locator('.php-error, .error-message:has-text("Fatal")');
+    const phpErrors = page.locator(
+      '.php-error, .error-message:has-text("Fatal")',
+    );
     await expect(phpErrors).toHaveCount(0);
   });
 
-  test('should validate target block selection is required', async ({ page }) => {
+  test('should validate target block selection is required', async ({
+    page,
+  }) => {
     // Navigate to proxy block configuration
     await page.goto(
       `${baseURL}/admin/structure/block/add/proxy_block_proxy/${ENVIRONMENT.theme}`,
@@ -180,7 +191,9 @@ test.describe('Proxy Block Target Configuration', () => {
     await page.waitForLoadState('networkidle');
 
     // Should either stay on form or show validation for required target block
-    const stillOnForm = page.locator('h1:has-text("Configure"), h1:has-text("Place")');
+    const stillOnForm = page.locator(
+      'h1:has-text("Configure"), h1:has-text("Place")',
+    );
     const onFormPage = (await stillOnForm.count()) > 0;
 
     if (onFormPage) {
@@ -190,13 +203,15 @@ test.describe('Proxy Block Target Configuration', () => {
     }
   });
 
-  test('should handle different target block selections correctly', async ({ page }) => {
+  test('should handle different target block selections correctly', async ({
+    page,
+  }) => {
     const blockTitle = `Multi Target Test ${testId}`;
 
     // Test proxy with different target blocks to verify selection works
     const targetBlocks = [
       { id: 'system_powered_by_block', expectedContent: 'Powered by' },
-      { id: 'system_branding_block', expectedContent: 'Home' } // Usually contains site name/logo
+      { id: 'system_branding_block', expectedContent: 'Home' }, // Usually contains site name/logo
     ];
 
     for (const targetBlock of targetBlocks) {
@@ -232,13 +247,19 @@ test.describe('Proxy Block Target Configuration', () => {
       await expect(proxyBlock).toBeVisible({ timeout: TIMEOUTS.DEFAULT });
 
       // Verify target-specific content is rendered through proxy
-      const targetContent = page.locator(`:text("${targetBlock.expectedContent}")`);
+      const targetContent = page.locator(
+        `:text("${targetBlock.expectedContent}")`,
+      );
       await expect(targetContent).toBeVisible({ timeout: TIMEOUTS.DEFAULT });
 
       // Clean up for next iteration
       await loginAsAdmin(page);
-      await page.goto(`${baseURL}/admin/structure/block/list/${ENVIRONMENT.theme}`);
-      const removeLink = page.locator(`tr:has-text("${currentBlockTitle}") a:has-text("Remove")`);
+      await page.goto(
+        `${baseURL}/admin/structure/block/list/${ENVIRONMENT.theme}`,
+      );
+      const removeLink = page.locator(
+        `tr:has-text("${currentBlockTitle}") a:has-text("Remove")`,
+      );
       if ((await removeLink.count()) > 0) {
         await removeLink.click();
         await page.locator('input[value="Remove"]').click();
@@ -256,7 +277,9 @@ test.describe('Proxy Block Target Configuration AJAX', () => {
     await loginAsAdmin(page);
   });
 
-  test('should trigger AJAX when target block is selected', async ({ page }) => {
+  test('should trigger AJAX when target block is selected', async ({
+    page,
+  }) => {
     // Navigate to proxy block configuration
     await page.goto(
       `${baseURL}/admin/structure/block/add/proxy_block_proxy/${ENVIRONMENT.theme}`,
@@ -266,14 +289,17 @@ test.describe('Proxy Block Target Configuration AJAX', () => {
     // Monitor for AJAX requests when target block changes
     let ajaxTriggered = false;
     page.on('request', request => {
-      if (request.url().includes('/ajax') || request.url().includes('?ajax_form=1')) {
+      if (
+        request.url().includes('/ajax') ||
+        request.url().includes('?ajax_form=1')
+      ) {
         ajaxTriggered = true;
       }
     });
 
     const targetSelect = page.locator('#edit-settings-target-block-id');
     await targetSelect.selectOption('system_powered_by_block');
-    
+
     // Wait for potential AJAX to complete
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
@@ -284,7 +310,9 @@ test.describe('Proxy Block Target Configuration AJAX', () => {
     expect(selectedValue).toBe('system_powered_by_block');
   });
 
-  test('should load target block configuration form if available', async ({ page }) => {
+  test('should load target block configuration form if available', async ({
+    page,
+  }) => {
     await page.goto(
       `${baseURL}/admin/structure/block/add/proxy_block_proxy/${ENVIRONMENT.theme}`,
     );
@@ -296,8 +324,10 @@ test.describe('Proxy Block Target Configuration AJAX', () => {
 
     // Check if target block's configuration options appear
     // This is proxy-specific functionality - loading target config within proxy form
-    const targetConfigSection = page.locator('.proxy-block-target-configuration, fieldset:has-text("Target"), .target-block-settings');
-    
+    const targetConfigSection = page.locator(
+      '.proxy-block-target-configuration, fieldset:has-text("Target"), .target-block-settings',
+    );
+
     // Target configuration may or may not appear depending on target block
     // The key test is that selection doesn't break the form
     const formIsStillValid = await page.locator('#edit-submit').isVisible();
@@ -350,7 +380,9 @@ test.describe('Proxy Block Context Handling', () => {
     await expect(targetContent).toBeVisible({ timeout: TIMEOUTS.DEFAULT });
 
     // Verify no context-related errors
-    const contextErrors = page.locator('.error:has-text("context"), .error:has-text("Context")');
+    const contextErrors = page.locator(
+      '.error:has-text("context"), .error:has-text("Context")',
+    );
     await expect(contextErrors).toHaveCount(0);
   });
 });

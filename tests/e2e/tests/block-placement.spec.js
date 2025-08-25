@@ -56,7 +56,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     await blockPlacementPage.navigate(ENVIRONMENT.theme);
   });
 
-  test('should access proxy block configuration with target block field', async ({ page }) => {
+  test('should access proxy block configuration with target block field', async ({
+    page,
+  }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
@@ -72,7 +74,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     expect(options).toBeGreaterThan(1);
   });
 
-  test('should configure proxy block with target block selection', async ({ page }) => {
+  test('should configure proxy block with target block selection', async ({
+    page,
+  }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
@@ -91,7 +95,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     expect(selectedValue).toBe('system_powered_by_block');
   });
 
-  test('should save proxy block with target configuration', async ({ page }) => {
+  test('should save proxy block with target configuration', async ({
+    page,
+  }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
@@ -115,7 +121,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
   });
 
-  test('should handle multiple target block configurations', async ({ page }) => {
+  test('should handle multiple target block configurations', async ({
+    page,
+  }) => {
     const targetBlocks = PROXY_BLOCK_DATA.configurations.slice(0, 2);
 
     for (let i = 0; i < targetBlocks.length; i++) {
@@ -142,7 +150,9 @@ test.describe('Proxy Block Configuration Settings', () => {
       await blockPlacementPage.verifyBlockPlaced(blockTitle, 'content');
 
       // Verify target block configuration persisted
-      const editLink = page.locator(`tr:has-text("${blockTitle}") a:has-text("Configure")`);
+      const editLink = page.locator(
+        `tr:has-text("${blockTitle}") a:has-text("Configure")`,
+      );
       await editLink.click();
       await page.waitForLoadState('networkidle');
 
@@ -170,7 +180,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     await page.waitForLoadState('networkidle');
 
     // Should remain on configuration page for proxy-specific validation
-    const configPageLocator = page.locator('h1').filter({ hasText: /Configure|Place/ });
+    const configPageLocator = page
+      .locator('h1')
+      .filter({ hasText: /Configure|Place/ });
     const isOnConfigPage = (await configPageLocator.count()) > 0;
 
     if (isOnConfigPage) {
@@ -220,7 +232,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     }
   });
 
-  test('should preserve target block settings during configuration updates', async ({ page }) => {
+  test('should preserve target block settings during configuration updates', async ({
+    page,
+  }) => {
     await blockPlacementPage.clickPlaceBlockForRegion('content');
     await blockPlacementPage.selectProxyBlock();
 
@@ -238,7 +252,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     await blockPlacementPage.saveBlock();
 
     // Edit the saved proxy block
-    const editLink = page.locator(`tr:has-text("${blockTitle}") a:has-text("Configure")`);
+    const editLink = page.locator(
+      `tr:has-text("${blockTitle}") a:has-text("Configure")`,
+    );
     await editLink.click();
     await page.waitForLoadState('networkidle');
 
@@ -258,7 +274,9 @@ test.describe('Proxy Block Configuration Settings', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify target block setting was preserved through the update
-    const editLinkUpdated = page.locator(`tr:has-text("${blockTitle} Updated") a:has-text("Configure")`);
+    const editLinkUpdated = page.locator(
+      `tr:has-text("${blockTitle} Updated") a:has-text("Configure")`,
+    );
     await editLinkUpdated.click();
     await page.waitForLoadState('networkidle');
 
