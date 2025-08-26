@@ -244,6 +244,166 @@ individually through the standard Drupal block configuration interface.
 - **Block UI**: Full compatibility
 - **Context System**: Full integration
 
+## Testing
+
+This module includes comprehensive test suites to ensure functionality across different environments.
+
+### PHPUnit Tests
+
+Run standard Drupal tests using PHPUnit:
+
+```bash
+# From Drupal root directory
+vendor/bin/phpunit --configuration web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests
+
+# Run specific test types
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Unit/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Kernel/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/Functional/
+vendor/bin/phpunit --debug -c web/core/phpunit.xml.dist web/modules/contrib/proxy_block/tests/src/FunctionalJavascript/
+```
+
+### Playwright E2E Tests
+
+The module includes comprehensive end-to-end tests using Playwright to validate the full user workflow.
+
+#### Prerequisites
+
+1. **Node.js 18+** and **npm** installed
+2. **DDEV environment** (recommended) or working Drupal site
+3. **Proxy Block module** enabled on the test site
+
+#### Local Setup
+
+```bash
+# Navigate to the module directory
+cd web/modules/contrib/proxy_block
+
+# Install Node.js dependencies
+npm ci
+
+# Install Playwright browsers
+npm run e2e:install
+# Or manually: npx playwright install
+```
+
+#### Running Tests
+
+**Option 1: DDEV Environment (Recommended)**
+
+```bash
+# Ensure DDEV is running
+ddev start
+
+# Run all E2E tests
+npm run e2e:test
+
+# Run tests with browser UI (for debugging)
+npm run e2e:test:headed
+
+# Run in debug mode with step-by-step execution
+npm run e2e:test:debug
+
+# Run specific test files
+npx playwright test tests/e2e/tests/auth-simple.spec.js
+npx playwright test tests/e2e/tests/ci-basic.spec.js
+```
+
+**Option 2: Standard Drupal Site**
+
+```bash
+# Set the base URL for your Drupal site
+export DRUPAL_BASE_URL="http://your-drupal-site.local"
+
+# Run tests
+npm run e2e:test
+```
+
+#### Test Structure
+
+The E2E test suite includes:
+
+- **`ci-basic.spec.js`**: Core functionality tests (CI-compatible, no external dependencies)
+- **`auth-simple.spec.js`**: Authentication and basic admin operations
+- **`simple.spec.js`**: Infrastructure and basic site validation
+- **Page Objects**: Reusable components in `tests/e2e/page-objects/`
+- **Utilities**: Helper functions in `tests/e2e/utils/`
+
+#### Test Configuration
+
+The tests are configured through `playwright.config.js` with these defaults:
+
+```javascript
+// Automatically detects environment
+baseURL: process.env.DRUPAL_BASE_URL ||
+  process.env.DDEV_PRIMARY_URL ||
+  'http://127.0.0.1:8080';
+
+// CI-optimized settings
+workers: process.env.CI ? 1 : undefined;
+retries: process.env.CI ? 2 : 0;
+```
+
+#### Viewing Test Results
+
+```bash
+# View the last test report
+npm run e2e:report
+# Or manually: npx playwright show-report
+
+# Test results are saved to:
+# - playwright-report/ (HTML report)
+# - test-results/ (screenshots, videos, traces)
+```
+
+#### Debugging Tests
+
+1. **Interactive Mode**: Use `npm run e2e:test:debug` to step through tests
+2. **Screenshots**: Automatically captured on failure
+3. **Videos**: Recorded for failed tests
+4. **Browser Console**: Console errors are captured and reported
+
+#### Test Environment Requirements
+
+**For Full Test Suite:**
+
+- Drupal site with proxy_block module enabled
+- Admin user with username: `admin`, password: `admin`
+- Devel module enabled (for content generation)
+
+**For Basic Tests Only:**
+
+- Any accessible Drupal site
+- Tests will create necessary users and content
+
+#### Common Issues and Solutions
+
+**Test Timeouts:**
+
+```bash
+# Increase timeout for slow environments
+npx playwright test --timeout 60000
+```
+
+**Authentication Issues:**
+
+```bash
+# Verify admin user exists
+drush user:information admin
+
+# Create admin user if needed
+drush user:create admin --mail="admin@example.com" --password="admin"
+drush user:role:add administrator admin
+```
+
+**Module Not Found:**
+
+```bash
+# Ensure module is enabled
+drush pm:enable proxy_block -y
+drush cr
+```
+
 ## Limitations
 
 - Only supports block plugins, not content blocks from the Block Library
