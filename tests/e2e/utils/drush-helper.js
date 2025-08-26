@@ -30,8 +30,8 @@ async function execDrushInTestSite(command, options = {}) {
   };
 
   try {
-    // Use the vendor/bin/drush path relative to the Drupal root
-    const drushCommand = `vendor/bin/drush ${command}`;
+    // Use ddev exec to run drush with database access
+    const drushCommand = `ddev exec vendor/bin/drush ${command}`;
 
     // Execute synchronously to match the expected API
     const result = execSync(drushCommand, defaults);
