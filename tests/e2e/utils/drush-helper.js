@@ -17,8 +17,9 @@ const path = require('path');
  * @return {string} Command output
  */
 async function execDrushInTestSite(command, options = {}) {
-  // Go to the Drupal root directory (/var/www/html)
-  const drupalRoot = '/var/www/html';
+  // Use relative path from this file to the Drupal root
+  // tests/e2e/utils -> ../../../../.. gets us to the main Drupal root
+  const drupalRoot = path.resolve(__dirname, '../../../../../../..');
 
   const defaults = {
     cwd: drupalRoot,
@@ -29,7 +30,7 @@ async function execDrushInTestSite(command, options = {}) {
   };
 
   try {
-    // Use the known drush location
+    // Use the vendor/bin/drush path relative to the Drupal root
     const drushCommand = `vendor/bin/drush ${command}`;
 
     // Execute synchronously to match the expected API
