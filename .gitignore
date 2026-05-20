@@ -10,3 +10,5 @@ phpunit.xml
 /.claude/settings.local.json
 /CLAUDE.local.md
 /.ai/agent-context.local.md
+.claude/plans
+.ai/task-manager

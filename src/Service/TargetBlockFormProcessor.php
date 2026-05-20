@@ -221,8 +221,14 @@ class TargetBlockFormProcessor {
       }
 
       if ($target_block instanceof ContextAwarePluginInterface) {
-        $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
-        $target_block->setContextMapping($context_mapping);
+        $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']);
+        // When the proxy is configured inside Layout Builder, the inner
+        // context_mapping element is intentionally not rendered (LB owns it
+        // at the root). In that case the submitted value is NULL and we
+        // must NOT clobber an existing saved mapping with an empty array.
+        if ($context_mapping !== NULL) {
+          $target_block->setContextMapping($context_mapping);
+        }
       }
 
       // Persist the unwrapped target plugin configuration.

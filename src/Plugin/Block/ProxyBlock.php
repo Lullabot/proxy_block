@@ -11,12 +11,15 @@ use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\proxy_block\Service\TargetBlockCacheManager;
+use Drupal\proxy_block\Service\TargetBlockContextManager;
 use Drupal\proxy_block\Service\TargetBlockFactory;
 use Drupal\proxy_block\Service\TargetBlockFormProcessor;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -61,6 +64,24 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   protected TargetBlockCacheManager $cacheManager;
 
   /**
+   * The context manager.
+   */
+  protected TargetBlockContextManager $contextManager;
+
+  /**
+   * Memoized target plugin definitions, keyed by target block id.
+   *
+   * Value is the plugin definition array, or FALSE when the lookup returned
+   * NULL / not-found (FALSE is distinguishable from "not yet looked up").
+   */
+  protected array $targetDefinitionCache = [];
+
+  /**
+   * The logger channel.
+   */
+  protected LoggerInterface $logger;
+
+  /**
    * Constructs a new AbTestProxyBlock.
    *
    * @param array $configuration
@@ -81,6 +102,10 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    *   The form processor.
    * @param \Drupal\proxy_block\Service\TargetBlockCacheManager $cache_manager
    *   The cache manager.
+   * @param \Drupal\proxy_block\Service\TargetBlockContextManager $context_manager
+   *   The context manager.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger channel.
    */
   public function __construct(
     array $configuration,
@@ -92,6 +117,8 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     TargetBlockFactory $target_block_factory,
     TargetBlockFormProcessor $form_processor,
     TargetBlockCacheManager $cache_manager,
+    TargetBlockContextManager $context_manager,
+    LoggerInterface $logger,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->blockManager = $block_manager;
@@ -100,6 +127,8 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $this->targetBlockFactory = $target_block_factory;
     $this->formProcessor = $form_processor;
     $this->cacheManager = $cache_manager;
+    $this->contextManager = $context_manager;
+    $this->logger = $logger;
   }
 
   /**
@@ -115,7 +144,9 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $container->get('request_stack'),
       $container->get(TargetBlockFactory::class),
       $container->get(TargetBlockFormProcessor::class),
-      $container->get(TargetBlockCacheManager::class)
+      $container->get(TargetBlockCacheManager::class),
+      $container->get(TargetBlockContextManager::class),
+      $container->get('logger.factory')->get('proxy_block'),
     );
   }
 
@@ -140,16 +171,34 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function getContextDefinitions() {
     $parent_definitions = parent::getContextDefinitions();
+    $definition = $this->getTargetPluginDefinition();
+    if ($definition === NULL) {
+      return $parent_definitions;
+    }
+    return ($definition['context_definitions'] ?? []) + $parent_definitions;
+  }
+
+  /**
+   * Returns the target block plugin definition, memoized.
+   *
+   * Used both by getContextDefinitions() and by build()'s admin-mode label
+   * lookup so a single blockManager call serves both.
+   *
+   * @return array|null
+   *   The plugin definition array, or NULL when no target is configured or
+   *   the target plugin can no longer be resolved.
+   */
+  protected function getTargetPluginDefinition(): ?array {
     $target_id = $this->configuration['target_block']['id'] ?? '';
-    if (empty($target_id)) {
-      return $parent_definitions;
+    if ($target_id === '') {
+      return NULL;
     }
-    $definition = $this->blockManager->getDefinition($target_id, FALSE);
-    if (!is_array($definition)) {
-      return $parent_definitions;
+    if (!array_key_exists($target_id, $this->targetDefinitionCache)) {
+      $definition = $this->blockManager->getDefinition($target_id, FALSE);
+      $this->targetDefinitionCache[$target_id] = is_array($definition) ? $definition : FALSE;
     }
-    $target_definitions = $definition['context_definitions'] ?? [];
-    return $target_definitions + $parent_definitions;
+    $definition = $this->targetDefinitionCache[$target_id];
+    return $definition === FALSE ? NULL : $definition;
   }
 
   /**
@@ -266,10 +315,54 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     // target. The target's own context_mapping references identifiers that
     // only exist in section storage (e.g. 'layout_builder.entity'), which the
     // render-time repository-only fallback in TargetBlockContextManager
-    // cannot resolve.
+    // cannot resolve. Each setContext() is guarded so a single mismatched
+    // type cannot tear down the whole render.
     if ($target_block instanceof ContextAwarePluginInterface) {
-      foreach ($this->getContexts() as $name => $context) {
-        $target_block->setContext($name, $context);
+      $proxy_contexts = $this->getContexts();
+      foreach ($proxy_contexts as $name => $context) {
+        try {
+          $target_block->setContext($name, $context);
+        }
+        catch (ContextException $e) {
+          $this->logger->notice('Proxy block could not forward context "@name" to target @plugin: @message', [
+            '@name' => $name,
+            '@plugin' => $target_block->getPluginId(),
+            '@message' => $e->getMessage(),
+          ]);
+        }
+      }
+
+      // Last-ditch fallback: when the target still wants a content-entity
+      // context (entity / node) and Layout Builder provided its
+      // section-storage root entity under a different name (e.g.
+      // layout_builder.entity), bind it explicitly so plugins that look up
+      // by the conventional name still resolve.
+      $root_entity_context = $this->contextManager->resolveRootEntityContext($proxy_contexts);
+      if ($root_entity_context !== NULL) {
+        foreach (['entity', 'node'] as $fallback_name) {
+          if (!isset($target_block->getContextDefinitions()[$fallback_name])) {
+            continue;
+          }
+          try {
+            $existing = $target_block->getContext($fallback_name);
+            if ($existing->hasContextValue()) {
+              continue;
+            }
+          }
+          catch (ContextException) {
+            // No context bound under this name yet; fall through to set it.
+          }
+          try {
+            $target_block->setContext($fallback_name, $root_entity_context);
+          }
+          catch (ContextException $e) {
+            $this->logger->notice('Proxy block root-entity fallback could not bind "@name" on target @plugin: @message', [
+              '@name' => $fallback_name,
+              '@plugin' => $target_block->getPluginId(),
+              '@message' => $e->getMessage(),
+            ]);
+          }
+        }
       }
     }
 
@@ -285,7 +378,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $config = $this->getConfiguration();
       $target_plugin_id = $config['target_block']['id'] ?? '';
       if ($target_plugin_id) {
-        $block_definition = $this->blockManager->getDefinition($target_plugin_id);
+        $block_definition = $this->getTargetPluginDefinition() ?? [];
         $admin_label = $block_definition['admin_label'] ?? NULL;
         $block_label = $admin_label ?: $target_plugin_id ?: 'Unknown Block';
         // Extra safety: ensure the $block_label is always a non-empty string.

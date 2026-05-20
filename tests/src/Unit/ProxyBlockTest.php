@@ -37,7 +37,9 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
       $this->requestStack,
       $this->targetBlockFactory,
       $this->formProcessor,
-      $this->cacheManager
+      $this->cacheManager,
+      $this->contextManager,
+      $this->logger
     );
   }
 
@@ -138,7 +140,9 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
       $this->requestStack,
       $this->targetBlockFactory,
       $this->formProcessor,
-      $this->cacheManager
+      $this->cacheManager,
+      $this->contextManager,
+      $this->logger
     );
 
     $expected_config = $proxy_block_with_config->getConfiguration();
@@ -271,7 +275,9 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
       $this->requestStack,
       $this->targetBlockFactory,
       $this->formProcessor,
-      $this->cacheManager
+      $this->cacheManager,
+      $this->contextManager,
+      $this->logger
     );
 
     $expected_config = $proxy_block->getConfiguration();
