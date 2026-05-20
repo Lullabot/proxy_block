@@ -244,6 +244,30 @@ class TargetBlockFormProcessor {
   }
 
   /**
+   * Builds the list of block plugins available as proxy targets.
+   *
+   * @param string $excluded_plugin_id
+   *   The plugin id of the proxy itself, excluded to prevent self-reference.
+   *
+   * @return array
+   *   Map of plugin id => admin label, sorted alphabetically by label.
+   */
+  public function getAvailableBlockOptions(string $excluded_plugin_id): array {
+    $definitions = $this->blockManager->getDefinitions();
+    $options = array_map(
+      static fn ($definition) => $definition['admin_label'] ?? $definition['id'],
+      array_filter(
+        $definitions,
+        static fn ($definition, $plugin_id) => $plugin_id !== $excluded_plugin_id,
+        ARRAY_FILTER_USE_BOTH,
+      ),
+    );
+    $options = array_unique($options);
+    asort($options);
+    return $options;
+  }
+
+  /**
    * Gets the selected target from the form state.
    *
    * @param \Drupal\Core\Form\FormStateInterface $form_state
