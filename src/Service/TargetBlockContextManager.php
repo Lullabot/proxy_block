@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\proxy_block\Service;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\Context\Context;
 use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\Context\ContextHandlerInterface;
@@ -34,10 +35,24 @@ class TargetBlockContextManager {
   /**
    * Gets all gathered contexts like Layout Builder does.
    *
+   * @param \Drupal\Core\Form\FormStateInterface|null $form_state
+   *   The form state from the calling configure form, when available. Layout
+   *   Builder's configure form populates a 'gathered_contexts' temporary value
+   *   that merges section storage contexts with repository contexts; the
+   *   directly-placed block path consumes that same value, so honoring it here
+   *   keeps proxied placements in parity with native placements.
+   *
    * @return \Drupal\Core\Plugin\Context\ContextInterface[]
    *   Array of available contexts.
    */
-  public function getGatheredContexts(): array {
+  public function getGatheredContexts(?FormStateInterface $form_state = NULL): array {
+    if ($form_state !== NULL) {
+      $contexts = $form_state->getTemporaryValue('gathered_contexts');
+      if (is_array($contexts) && !empty($contexts)) {
+        return $contexts;
+      }
+    }
+
     $available_context_ids = $this->contextRepository->getAvailableContexts();
     $contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
 

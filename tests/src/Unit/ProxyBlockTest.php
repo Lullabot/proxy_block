@@ -152,7 +152,7 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $this->formProcessor
       ->expects($this->once())
       ->method('buildTargetBlockConfigurationForm')
-      ->with('system_branding_block', $expected_config)
+      ->with('system_branding_block', $expected_config, $form_state)
       ->willReturn(['#markup' => 'Config form']);
 
     $result = $proxy_block_with_config->blockForm($form, $form_state);
@@ -200,7 +200,7 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
     $this->formProcessor
       ->expects($this->once())
       ->method('validateTargetBlock')
-      ->with($form_state, $expected_config);
+      ->with($form, $form_state, $expected_config);
 
     $this->proxyBlock->blockValidate($form, $form_state);
   }
@@ -211,12 +211,13 @@ final class ProxyBlockTest extends ProxyBlockUnitTestBase {
   public function testBlockSubmit(): void {
     $form = [];
     $form_state = $this->createMock(FormStateInterface::class);
-    $expected_config = ['target_block' => ['id' => 'test_block']];
+    $existing_config = $this->proxyBlock->getConfiguration();
+    $expected_config = ['target_block' => ['id' => 'test_block', 'config' => []]];
 
     $this->formProcessor
       ->expects($this->once())
       ->method('submitTargetBlock')
-      ->with($form_state)
+      ->with($form, $form_state, $existing_config)
       ->willReturn($expected_config);
 
     $this->proxyBlock->blockSubmit($form, $form_state);

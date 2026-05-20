@@ -131,6 +131,45 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
   /**
    * {@inheritdoc}
+   *
+   * Expose the target plugin's context definitions as our own. This lets
+   * Layout Builder treat the proxy as context-aware: it adds a context
+   * assignment element to the configure form and applies section-storage
+   * contexts to the proxy at render time, which build() then forwards to
+   * the target block.
+   */
+  public function getContextDefinitions() {
+    $parent_definitions = parent::getContextDefinitions();
+    $target_id = $this->configuration['target_block']['id'] ?? '';
+    if (empty($target_id)) {
+      return $parent_definitions;
+    }
+    $definition = $this->blockManager->getDefinition($target_id, FALSE);
+    if (!is_array($definition)) {
+      return $parent_definitions;
+    }
+    $target_definitions = $definition['context_definitions'] ?? [];
+    return $target_definitions + $parent_definitions;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Pair with getContextDefinitions(): the trait's singular form reads from
+   * the plugin definition directly, which doesn't know about target-mirrored
+   * contexts. Resolve through the merged map so getContexts() / cache
+   * metadata collection don't blow up with "context is not a valid context".
+   */
+  public function getContextDefinition($name) {
+    $definitions = $this->getContextDefinitions();
+    if (isset($definitions[$name])) {
+      return $definitions[$name];
+    }
+    return parent::getContextDefinition($name);
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function blockForm($form, FormStateInterface $form_state) {
     $form = parent::blockForm($form, $form_state);
@@ -177,6 +216,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $form['target_block']['config'] += $this->formProcessor->buildTargetBlockConfigurationForm(
         $selected_target_block['id'],
         $config,
+        $form_state,
       );
     }
 
@@ -202,7 +242,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockValidate($form, FormStateInterface $form_state) {
     parent::blockValidate($form, $form_state);
-    $this->formProcessor->validateTargetBlock($form_state, $this->getConfiguration());
+    $this->formProcessor->validateTargetBlock($form, $form_state, $this->getConfiguration());
   }
 
   /**
@@ -210,7 +250,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
     parent::blockSubmit($form, $form_state);
-    $this->configuration = $this->formProcessor->submitTargetBlock($form_state);
+    $this->configuration = $this->formProcessor->submitTargetBlock($form, $form_state, $this->getConfiguration());
   }
 
   /**
@@ -220,6 +260,17 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
     if (!$target_block) {
       return [];
+    }
+
+    // Forward contexts that Layout Builder applied to this proxy onto the
+    // target. The target's own context_mapping references identifiers that
+    // only exist in section storage (e.g. 'layout_builder.entity'), which the
+    // render-time repository-only fallback in TargetBlockContextManager
+    // cannot resolve.
+    if ($target_block instanceof ContextAwarePluginInterface) {
+      foreach ($this->getContexts() as $name => $context) {
+        $target_block->setContext($name, $context);
+      }
     }
 
     $request = $this->requestStack->getCurrentRequest();

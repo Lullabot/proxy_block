@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Drupal\proxy_block\Service;
 
-use Drupal\Core\Block\BlockPluginInterface;
-use Drupal\Core\Form\FormState;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockManagerInterface;
+use Drupal\Core\Block\BlockPluginInterface;
+use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Form\SubformState;
 use Drupal\Core\Plugin\ContextAwarePluginAssignmentTrait;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
@@ -43,11 +44,15 @@ class TargetBlockFormProcessor {
    *   The selected block plugin ID.
    * @param array $configuration
    *   The proxy block configuration.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state of the calling form. Forwarded to the context manager so
+   *   Layout Builder's section-storage contexts (exposed via the
+   *   'gathered_contexts' temporary value) drive the context-mapping element.
    *
    * @return array
    *   The configuration form elements.
    */
-  public function buildTargetBlockConfigurationForm(string $plugin_id, array $configuration): array {
+  public function buildTargetBlockConfigurationForm(string $plugin_id, array $configuration, FormStateInterface $form_state): array {
     $block_config = $configuration['target_block']['config'] ?? [];
     $form_elements = [];
 
@@ -88,8 +93,19 @@ class TargetBlockFormProcessor {
       }
 
       if ($target_block instanceof ContextAwarePluginInterface) {
-        $gathered_contexts = $this->contextManager->getGatheredContexts();
-        $form_elements['context_mapping'] = $this->addContextAssignmentElement($target_block, $gathered_contexts);
+        // When the proxy is configured inside Layout Builder, LB already
+        // renders a context_mapping element at the form root against the
+        // proxy block's own (target-mirrored) context definitions. Adding
+        // a second one here would duplicate the UI and split the saved
+        // mapping across two places. Detect LB by the presence of its
+        // 'gathered_contexts' temporary value and skip the inner element
+        // in that case.
+        $lb_gathered = $form_state->getTemporaryValue('gathered_contexts');
+        $inside_layout_builder = is_array($lb_gathered) && !empty($lb_gathered);
+        if (!$inside_layout_builder) {
+          $gathered_contexts = $this->contextManager->getGatheredContexts($form_state);
+          $form_elements['context_mapping'] = $this->addContextAssignmentElement($target_block, $gathered_contexts);
+        }
       }
 
       return $form_elements;
@@ -113,73 +129,112 @@ class TargetBlockFormProcessor {
   /**
    * Validates the target block configuration.
    *
+   * @param array $form
+   *   The parent form structure, used to scope a SubformState to the nested
+   *   block-config sub-form so target plugins read the correct values.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
    * @param array $configuration
    *   The proxy block configuration.
    */
-  public function validateTargetBlock(FormStateInterface $form_state, array $configuration): void {
+  public function validateTargetBlock(array $form, FormStateInterface $form_state, array $configuration): void {
     $target_block_plugin = $form_state->getValue(['target_block', 'id']);
-    if (!empty($target_block_plugin)) {
-      $block_config = $form_state->getValue(['target_block', 'config']) ?? $configuration['target_block']['config'] ?? [];
+    if (empty($target_block_plugin)) {
+      return;
+    }
 
-      try {
-        $this->blockManager->createInstance($target_block_plugin, $block_config);
+    // The AJAX-built target form nests block-config values under
+    // target_block.config.block_config; read from that exact path so the
+    // values match what the sub-form actually rendered.
+    $block_config = $form_state->getValue(['target_block', 'config', 'block_config'])
+      ?? $configuration['target_block']['config']
+      ?? [];
+
+    try {
+      $target_block = $this->blockManager->createInstance($target_block_plugin, $block_config);
+
+      if ($target_block instanceof PluginFormInterface) {
+        $sub_form = $form['target_block']['config']['block_config'] ?? [];
+        if (!empty($sub_form)) {
+          $subform_state = SubformState::createForSubform($sub_form, $form, $form_state);
+          $target_block->validateConfigurationForm($sub_form, $subform_state);
+        }
       }
-      catch (PluginException $e) {
-        $form_state->setErrorByName('target_block][id', $this->t('Invalid target block plugin: @message', [
-          '@message' => $e->getMessage(),
-        ]));
-      }
+    }
+    catch (PluginException $e) {
+      $form_state->setErrorByName('target_block][id', $this->t('Invalid target block plugin: @message', [
+        '@message' => $e->getMessage(),
+      ]));
     }
   }
 
   /**
    * Submits the target block configuration.
    *
+   * @param array $form
+   *   The parent form structure, used to scope a SubformState to the nested
+   *   block-config sub-form so the target plugin's own submit lifecycle sees
+   *   the correct values.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
+   * @param array $configuration
+   *   The current proxy block configuration. Any keys outside of
+   *   `target_block` are preserved in the returned array.
    *
    * @return array
-   *   The updated proxy block configuration.
+   *   The full proxy block configuration with the submitted target block
+   *   values merged in (submitted values win over the existing ones).
    */
-  public function submitTargetBlock(FormStateInterface $form_state): array {
+  public function submitTargetBlock(array $form, FormStateInterface $form_state, array $configuration): array {
     $target_plugin_id = $form_state->getValue(['target_block', 'id']);
-    $configuration = [];
-    $configuration['target_block']['id'] = $target_plugin_id;
+    $submitted = [];
+    $submitted['target_block']['id'] = $target_plugin_id;
 
-    if (!empty($target_plugin_id)) {
-      $block_config = $form_state->getValue(['target_block', 'config']) ?? [];
+    if (empty($target_plugin_id)) {
+      $submitted['target_block']['config'] = [];
+      return $submitted + $configuration;
+    }
 
-      try {
-        $target_block = $this->blockManager->createInstance($target_plugin_id, $block_config);
+    // Read the unwrapped block-config values (the AJAX-built sub-form lives
+    // at target_block.config.block_config). Reading from target_block.config
+    // would return the wrapper array and pollute the plugin's configuration
+    // with leftover 'block_config' / 'context_mapping' keys.
+    $block_config = $form_state->getValue(['target_block', 'config', 'block_config']) ?? [];
 
-        if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
-          $target_block->setConfiguration($block_config + $target_block->getConfiguration());
-        }
+    try {
+      $target_block = $this->blockManager->createInstance($target_plugin_id, $block_config);
 
-        if ($target_block instanceof ContextAwarePluginInterface) {
-          $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
-          $target_block->setContextMapping($context_mapping);
-        }
-
-        // Get the final configuration after all modifications.
-        if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
-          $configuration['target_block']['config'] = $target_block->getConfiguration();
+      // Route block-config values through the target plugin's own submit
+      // lifecycle so plugins reading $form_state->getValues() see the
+      // sub-form scope rather than the parent scope.
+      if ($target_block instanceof PluginFormInterface && $target_block instanceof BlockPluginInterface) {
+        $sub_form = $form['target_block']['config']['block_config'] ?? [];
+        if (!empty($sub_form)) {
+          $subform_state = SubformState::createForSubform($sub_form, $form, $form_state);
+          $target_block->submitConfigurationForm($sub_form, $subform_state);
         }
         else {
-          $configuration['target_block']['config'] = $block_config;
+          // Plugin built no config form; fall back to a direct merge so any
+          // values present still reach the configuration array.
+          $target_block->setConfiguration($block_config + $target_block->getConfiguration());
         }
       }
-      catch (PluginException $e) {
-        $configuration['target_block']['config'] = [];
+
+      if ($target_block instanceof ContextAwarePluginInterface) {
+        $context_mapping = $form_state->getValue(['target_block', 'config', 'context_mapping']) ?? [];
+        $target_block->setContextMapping($context_mapping);
       }
+
+      // Persist the unwrapped target plugin configuration.
+      $submitted['target_block']['config'] = $target_block instanceof BlockPluginInterface
+        ? $target_block->getConfiguration()
+        : $block_config;
     }
-    else {
-      $configuration['target_block']['config'] = [];
+    catch (PluginException $e) {
+      $submitted['target_block']['config'] = [];
     }
 
-    return $configuration;
+    return $submitted + $configuration;
   }
 
   /**
