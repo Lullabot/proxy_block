@@ -20,6 +20,7 @@ use Drupal\proxy_block\Service\TargetBlockFactory;
 use Drupal\proxy_block\Service\TargetBlockFormProcessor;
 use Drupal\Tests\UnitTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -73,6 +74,11 @@ abstract class ProxyBlockUnitTestBase extends UnitTestCase {
   protected TargetBlockContextManager|MockObject $contextManager;
 
   /**
+   * Mock logger.
+   */
+  protected LoggerInterface|MockObject $logger;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -112,6 +118,7 @@ abstract class ProxyBlockUnitTestBase extends UnitTestCase {
     $this->formProcessor = $this->createMock(TargetBlockFormProcessor::class);
     $this->cacheManager = $this->createMock(TargetBlockCacheManager::class);
     $this->contextManager = $this->createMock(TargetBlockContextManager::class);
+    $this->logger = $this->createMock(LoggerInterface::class);
   }
 
   /**

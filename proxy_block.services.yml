@@ -2,7 +2,11 @@ services:
   _defaults:
     autowire: true
     autoconfigure: true
+  logger.channel.proxy_block:
+    parent: logger.channel_base
+    arguments: ['proxy_block']
   Drupal\proxy_block\Service\TargetBlockContextManager: {}
   Drupal\proxy_block\Service\TargetBlockFactory: {}
   Drupal\proxy_block\Service\TargetBlockFormProcessor: {}
   Drupal\proxy_block\Service\TargetBlockCacheManager: {}
+  Drupal\proxy_block\Service\ProxyBlockRenderer: {}
