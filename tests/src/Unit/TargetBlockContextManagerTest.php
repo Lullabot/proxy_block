@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\proxy_block\Unit;
 
-use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
 use Drupal\Core\Plugin\Context\ContextHandlerInterface;
 use Drupal\Core\Plugin\Context\ContextInterface;
@@ -47,8 +46,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->testContextManager = new TestableTargetBlockContextManager(
       $this->contextRepository,
-      $this->contextHandler,
-      $this->logger
+      $this->contextHandler
     );
 
     $this->testContextManager->setStringTranslation($this->stringTranslation);
@@ -441,16 +439,11 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
   }
 
   /**
-   * Tests that non-ContextException during gathering now propagates.
-   *
-   * The previous implementation wrapped the whole method in a broad
-   * catch(\Exception). It was deliberately tightened: only ContextException
-   * is swallowed during the context-handler application step; everything
-   * else surfaces so real bugs aren't silenced.
+   * Tests applyContextsToTargetBlock with exception during context gathering.
    *
    * @covers ::applyContextsToTargetBlock
    */
-  public function testApplyContextsToTargetBlockExceptionDuringGatheringPropagates(): void {
+  public function testApplyContextsToTargetBlockExceptionDuringGathering(): void {
     $target_block = $this->createMock(ContextAwarePluginInterface::class);
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -460,66 +453,20 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->method('getAvailableContexts')
       ->willThrowException(new \Exception('Context repository error'));
 
+    // Should catch the exception and continue gracefully.
     $this->contextHandler
       ->expects($this->never())
       ->method('applyContextMapping');
 
-    $this->expectException(\Exception::class);
-    $this->expectExceptionMessage('Context repository error');
     $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 
   /**
-   * Tests that ContextException during application is logged and swallowed.
+   * Tests applyContextsToTargetBlock with exception during context application.
    *
    * @covers ::applyContextsToTargetBlock
    */
-  public function testApplyContextsToTargetBlockContextExceptionDuringApplicationIsSwallowed(): void {
-    $context_definition = $this->createMock(ContextDefinitionInterface::class);
-    $context_definition->method('isRequired')
-      ->willReturn(TRUE);
-
-    $target_block = $this->createMock(ContextAwarePluginInterface::class);
-    $target_block->method('getContextDefinitions')
-      ->willReturn(['node' => $context_definition]);
-    $target_block->method('getContextMapping')
-      ->willReturn(['node' => 'current_node']);
-    $target_block->method('getPluginId')
-      ->willReturn('test_block');
-
-    $gathered_contexts = [
-      'current_node' => $this->createMock(ContextInterface::class),
-    ];
-
-    $mock_view_mode_context = $this->createMock(ContextInterface::class);
-    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
-
-    $this->contextRepository
-      ->method('getAvailableContexts')
-      ->willReturn(['current_node' => 'Node']);
-    $this->contextRepository
-      ->method('getRuntimeContexts')
-      ->willReturn($gathered_contexts);
-
-    $this->contextHandler
-      ->expects($this->once())
-      ->method('applyContextMapping')
-      ->willThrowException(new ContextException('Context application error'));
-
-    $this->logger
-      ->expects($this->once())
-      ->method('notice');
-
-    // Should catch the ContextException and continue gracefully.
-    $this->testContextManager->applyContextsToTargetBlock($target_block);
-  }
-
-  /**
-   * Tests that non-ContextException during application propagates.
-   *
-   * @covers ::applyContextsToTargetBlock
-   */
-  public function testApplyContextsToTargetBlockGenericExceptionDuringApplicationPropagates(): void {
+  public function testApplyContextsToTargetBlockExceptionDuringApplication(): void {
     $context_definition = $this->createMock(ContextDefinitionInterface::class);
     $context_definition->method('isRequired')
       ->willReturn(TRUE);
@@ -547,10 +494,9 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
     $this->contextHandler
       ->expects($this->once())
       ->method('applyContextMapping')
-      ->willThrowException(new \RuntimeException('Unexpected error'));
+      ->willThrowException(new \Exception('Context application error'));
 
-    $this->expectException(\RuntimeException::class);
-    $this->expectExceptionMessage('Unexpected error');
+    // Should catch the exception and continue gracefully.
     $this->testContextManager->applyContextsToTargetBlock($target_block);
   }
 

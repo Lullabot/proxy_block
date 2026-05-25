@@ -77,8 +77,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with($plugin_id, [])
       ->willReturn($target_block);
 
-    $form_state = $this->createMock(FormStateInterface::class);
-    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration, $form_state);
+    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
     $this->assertArrayHasKey('no_config', $result);
     $this->assertEquals('details', $result['no_config']['#type']);
@@ -122,8 +121,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with($plugin_id, ['existing_config' => 'value'])
       ->willReturn($target_block);
 
-    $form_state = $this->createMock(FormStateInterface::class);
-    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration, $form_state);
+    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
     $this->assertArrayHasKey('block_config', $result);
     $this->assertEquals('details', $result['block_config']['#type']);
@@ -170,8 +168,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with($plugin_id, [])
       ->willReturn($target_block);
 
-    $form_state = $this->createMock(FormStateInterface::class);
-    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration, $form_state);
+    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
     $this->assertArrayHasKey('no_config', $result);
     $this->assertArrayHasKey('context_mapping', $result);
@@ -215,8 +212,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with($plugin_id, [])
       ->willReturn($target_block);
 
-    $form_state = $this->createMock(FormStateInterface::class);
-    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration, $form_state);
+    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
     $this->assertArrayHasKey('block_config', $result);
     $this->assertArrayHasKey('context_mapping', $result);
@@ -239,8 +235,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with($plugin_id, [])
       ->willThrowException(new PluginException('Plugin not found'));
 
-    $form_state = $this->createMock(FormStateInterface::class);
-    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration, $form_state);
+    $result = $this->processor->buildTargetBlockConfigurationForm($plugin_id, $configuration);
 
     $this->assertArrayHasKey('error', $result);
     $this->assertEquals('details', $result['error']['#type']);
@@ -266,7 +261,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'valid_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return ['some_config' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -284,7 +279,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->expects($this->never())
       ->method('setErrorByName');
 
-    $this->processor->validateTargetBlock([], $form_state, $configuration);
+    $this->processor->validateTargetBlock($form_state, $configuration);
 
     // Test passes if no exception is thrown and no error is set.
   }
@@ -305,7 +300,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'invalid_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return [];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -322,7 +317,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->method('setErrorByName')
       ->with('target_block][id', $this->isInstanceOf(TranslatableMarkup::class));
 
-    $this->processor->validateTargetBlock([], $form_state, $configuration);
+    $this->processor->validateTargetBlock($form_state, $configuration);
 
     // Test passes if error is set via setErrorByName.
   }
@@ -350,7 +345,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->expects($this->never())
       ->method('setErrorByName');
 
-    $this->processor->validateTargetBlock([], $form_state, $configuration);
+    $this->processor->validateTargetBlock($form_state, $configuration);
   }
 
   /**
@@ -373,7 +368,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'test_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return NULL;
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -391,7 +386,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->expects($this->never())
       ->method('setErrorByName');
 
-    $this->processor->validateTargetBlock([], $form_state, $configuration);
+    $this->processor->validateTargetBlock($form_state, $configuration);
 
     // Test passes if no exception is thrown and fallback config is used.
   }
@@ -411,7 +406,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'simple_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return ['block_setting' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -434,7 +429,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with('simple_block', ['block_setting' => 'value'])
       ->willReturn($target_block);
 
-    $result = $this->processor->submitTargetBlock([], $form_state, []);
+    $result = $this->processor->submitTargetBlock($form_state);
 
     $this->assertEquals('simple_block', $result['target_block']['id']);
     $this->assertEquals([
@@ -458,9 +453,10 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'configurable_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return ['user_setting' => 'user_value'];
         }
+        // @phpstan-ignore-next-line
         if ($key === ['target_block', 'config', 'context_mapping']) {
           return [];
         }
@@ -480,7 +476,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with('configurable_block', ['user_setting' => 'user_value'])
       ->willReturn($target_block);
 
-    $result = $this->processor->submitTargetBlock([], $form_state, []);
+    $result = $this->processor->submitTargetBlock($form_state);
 
     $this->assertEquals('configurable_block', $result['target_block']['id']);
     $this->assertEquals([
@@ -504,9 +500,10 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'context_aware_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return ['setting' => 'value'];
         }
+        // @phpstan-ignore-next-line
         if ($key === ['target_block', 'config', 'context_mapping']) {
           return ['node' => 'current_node', 'user' => 'current_user'];
         }
@@ -530,7 +527,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with('context_aware_block', ['setting' => 'value'])
       ->willReturn($target_block);
 
-    $result = $this->processor->submitTargetBlock([], $form_state, []);
+    $result = $this->processor->submitTargetBlock($form_state);
 
     $this->assertEquals('context_aware_block', $result['target_block']['id']);
     $this->assertEquals([
@@ -557,7 +554,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->expects($this->never())
       ->method('createInstance');
 
-    $result = $this->processor->submitTargetBlock([], $form_state, []);
+    $result = $this->processor->submitTargetBlock($form_state);
 
     $this->assertEquals('', $result['target_block']['id']);
     $this->assertEquals([], $result['target_block']['config']);
@@ -578,7 +575,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'invalid_block';
         }
-        if ($key === ['target_block', 'config', 'block_config']) {
+        if ($key === ['target_block', 'config']) {
           return ['setting' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -590,7 +587,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
       ->with('invalid_block', ['setting' => 'value'])
       ->willThrowException(new PluginException('Plugin not found'));
 
-    $result = $this->processor->submitTargetBlock([], $form_state, []);
+    $result = $this->processor->submitTargetBlock($form_state);
 
     $this->assertEquals('invalid_block', $result['target_block']['id']);
     $this->assertEquals([], $result['target_block']['config']);
