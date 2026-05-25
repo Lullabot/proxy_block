@@ -38,8 +38,22 @@ class TargetBlockContextManager {
    *   Array of available contexts.
    */
   public function getGatheredContexts(): array {
-    $available_context_ids = $this->contextRepository->getAvailableContexts();
-    $contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_context_ids));
+    $available_contexts = $this->contextRepository->getAvailableContexts();
+    $contexts = $this->contextRepository->getRuntimeContexts(array_keys($available_contexts));
+
+    // Runtime context definitions may lack labels (e.g. NodeRouteContext).
+    // Without a label the select option value is NULL, and Drupal's
+    // FormValidator uses isset() which returns FALSE for NULL, rejecting
+    // the submitted value. Copy labels from the available context
+    // definitions which always carry a human-readable label.
+    foreach ($contexts as $context_id => $context) {
+      if (empty($context->getContextDefinition()->getLabel()) && isset($available_contexts[$context_id])) {
+        $available_label = $available_contexts[$context_id]->getContextDefinition()->getLabel();
+        if (!empty($available_label)) {
+          $context->getContextDefinition()->setLabel($available_label);
+        }
+      }
+    }
 
     $populated_contexts = $contexts;
 
