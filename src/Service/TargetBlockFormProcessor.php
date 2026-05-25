@@ -121,7 +121,7 @@ class TargetBlockFormProcessor {
   public function validateTargetBlock(FormStateInterface $form_state, array $configuration): void {
     $target_block_plugin = $form_state->getValue(['target_block', 'id']);
     if (!empty($target_block_plugin)) {
-      $block_config = $form_state->getValue(['target_block', 'config']) ?? $configuration['target_block']['config'] ?? [];
+      $block_config = $form_state->getValue(['target_block', 'config', 'block_config']) ?? $configuration['target_block']['config'] ?? [];
 
       try {
         $this->blockManager->createInstance($target_block_plugin, $block_config);
@@ -149,7 +149,7 @@ class TargetBlockFormProcessor {
     $configuration['target_block']['id'] = $target_plugin_id;
 
     if (!empty($target_plugin_id)) {
-      $block_config = $form_state->getValue(['target_block', 'config']) ?? [];
+      $block_config = $form_state->getValue(['target_block', 'config', 'block_config']) ?? [];
 
       try {
         $target_block = $this->blockManager->createInstance($target_plugin_id, $block_config);
