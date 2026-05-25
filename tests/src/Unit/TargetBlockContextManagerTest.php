@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\proxy_block\Unit;
 
+use Drupal\Component\Plugin\Context\ContextDefinitionInterface as ComponentContextDefinitionInterface;
 use Drupal\Core\Plugin\Context\ContextDefinitionInterface;
 use Drupal\Core\Plugin\Context\ContextHandlerInterface;
 use Drupal\Core\Plugin\Context\ContextInterface;
@@ -53,27 +54,65 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
   }
 
   /**
+   * Creates an array of available context mocks keyed by context ID.
+   *
+   * @param array $labels
+   *   Associative array of context_id => label.
+   *
+   * @return \Drupal\Core\Plugin\Context\ContextInterface[]
+   *   Mock context objects with labeled definitions.
+   */
+  private function createAvailableContextMocks(array $labels): array {
+    $contexts = [];
+    foreach ($labels as $id => $label) {
+      $definition = $this->createMock(ComponentContextDefinitionInterface::class);
+      $definition->method('getLabel')->willReturn($label);
+      $context = $this->createMock(ContextInterface::class);
+      $context->method('getContextDefinition')->willReturn($definition);
+      $contexts[$id] = $context;
+    }
+    return $contexts;
+  }
+
+  /**
+   * Creates a runtime context mock with a labeled definition.
+   *
+   * @param string|null $label
+   *   The label for the context definition, or NULL for no label.
+   *
+   * @return \Drupal\Core\Plugin\Context\ContextInterface|\PHPUnit\Framework\MockObject\MockObject
+   *   A mock context.
+   */
+  private function createRuntimeContextMock(?string $label = 'Test'): ContextInterface|MockObject {
+    $definition = $this->createMock(ComponentContextDefinitionInterface::class);
+    $definition->method('getLabel')->willReturn($label);
+    $context = $this->createMock(ContextInterface::class);
+    $context->method('getContextDefinition')->willReturn($definition);
+    return $context;
+  }
+
+  /**
    * Tests getGatheredContexts with available contexts.
    *
    * @covers ::getGatheredContexts
    */
   public function testGetGatheredContextsWithAvailableContexts(): void {
-    $available_context_ids = [
+    $available_contexts = $this->createAvailableContextMocks([
       'node' => 'Current node',
       'user' => 'Current user',
       'view_mode' => 'View mode',
-    ];
+    ]);
 
     $runtime_contexts = [
-      'node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
-      'view_mode' => $this->createMock(ContextInterface::class),
+      'node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
+      'view_mode' => $this->createRuntimeContextMock('View mode'),
     ];
 
     $this->contextRepository
       ->expects($this->once())
       ->method('getAvailableContexts')
-      ->willReturn($available_context_ids);
+      ->willReturn($available_contexts);
 
     $this->contextRepository
       ->expects($this->once())
@@ -96,14 +135,14 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
    * @covers ::createDefaultViewModeContext
    */
   public function testGetGatheredContextsCreatesDefaultViewModeContext(): void {
-    $available_context_ids = [
+    $available_contexts = $this->createAvailableContextMocks([
       'node' => 'Current node',
       'user' => 'Current user',
-    ];
+    ]);
 
     $runtime_contexts = [
-      'node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
+      'node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -112,7 +151,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
     $this->contextRepository
       ->expects($this->once())
       ->method('getAvailableContexts')
-      ->willReturn($available_context_ids);
+      ->willReturn($available_contexts);
 
     $this->contextRepository
       ->expects($this->once())
@@ -138,21 +177,21 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
    * @covers ::getGatheredContexts
    */
   public function testGetGatheredContextsWithExistingViewModeContext(): void {
-    $available_context_ids = [
+    $available_contexts = $this->createAvailableContextMocks([
       'node' => 'Current node',
       'view_mode' => 'View mode',
-    ];
+    ]);
 
-    $existing_view_mode_context = $this->createMock(ContextInterface::class);
+    $existing_view_mode_context = $this->createRuntimeContextMock('View mode');
     $runtime_contexts = [
-      'node' => $this->createMock(ContextInterface::class),
+      'node' => $this->createRuntimeContextMock('Node'),
       'view_mode' => $existing_view_mode_context,
     ];
 
     $this->contextRepository
       ->expects($this->once())
       ->method('getAvailableContexts')
-      ->willReturn($available_context_ids);
+      ->willReturn($available_contexts);
 
     $this->contextRepository
       ->expects($this->once())
@@ -205,6 +244,70 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
   }
 
   /**
+   * Tests that runtime contexts without labels get labels from available ones.
+   *
+   * @covers ::getGatheredContexts
+   */
+  public function testGetGatheredContextsCopiesLabelsFromAvailableContexts(): void {
+    $available_contexts = $this->createAvailableContextMocks([
+      '@node.node_route_context:node' => 'Node from URL',
+    ]);
+
+    // Runtime context has a definition that starts with a NULL label.
+    $runtime_definition = $this->createMock(ComponentContextDefinitionInterface::class);
+    $runtime_definition->method('getLabel')->willReturn(NULL);
+    $runtime_definition->expects($this->once())
+      ->method('setLabel')
+      ->with('Node from URL');
+    $runtime_context = $this->createMock(ContextInterface::class);
+    $runtime_context->method('getContextDefinition')->willReturn($runtime_definition);
+
+    $mock_view_mode_context = $this->createMock(ContextInterface::class);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
+
+    $this->contextRepository
+      ->method('getAvailableContexts')
+      ->willReturn($available_contexts);
+    $this->contextRepository
+      ->method('getRuntimeContexts')
+      ->willReturn(['@node.node_route_context:node' => $runtime_context]);
+
+    $result = $this->testContextManager->getGatheredContexts();
+
+    $this->assertArrayHasKey('@node.node_route_context:node', $result);
+  }
+
+  /**
+   * Tests that runtime contexts with existing labels are not overwritten.
+   *
+   * @covers ::getGatheredContexts
+   */
+  public function testGetGatheredContextsPreservesExistingLabels(): void {
+    $available_contexts = $this->createAvailableContextMocks([
+      'node' => 'Node from URL',
+    ]);
+
+    // Runtime context already has a label.
+    $runtime_definition = $this->createMock(ComponentContextDefinitionInterface::class);
+    $runtime_definition->method('getLabel')->willReturn('Existing label');
+    $runtime_definition->expects($this->never())->method('setLabel');
+    $runtime_context = $this->createMock(ContextInterface::class);
+    $runtime_context->method('getContextDefinition')->willReturn($runtime_definition);
+
+    $mock_view_mode_context = $this->createMock(ContextInterface::class);
+    $this->testContextManager->setMockViewModeContext($mock_view_mode_context);
+
+    $this->contextRepository
+      ->method('getAvailableContexts')
+      ->willReturn($available_contexts);
+    $this->contextRepository
+      ->method('getRuntimeContexts')
+      ->willReturn(['node' => $runtime_context]);
+
+    $this->testContextManager->getGatheredContexts();
+  }
+
+  /**
    * Tests applyContextsToTargetBlock with block having no context requirements.
    *
    * @covers ::applyContextsToTargetBlock
@@ -217,8 +320,8 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn([]);
 
     $gathered_contexts = [
-      'node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
+      'node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -226,7 +329,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['node' => 'Node', 'user' => 'User']);
+      ->willReturn($this->createAvailableContextMocks(['node' => 'Node', 'user' => 'User']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
@@ -256,8 +359,8 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn(['node' => 'current_node']);
 
     $gathered_contexts = [
-      'current_node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
+      'current_node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -265,7 +368,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['current_node' => 'Node', 'user' => 'User']);
+      ->willReturn($this->createAvailableContextMocks(['current_node' => 'Node', 'user' => 'User']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
@@ -304,8 +407,8 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn([]);
 
     $gathered_contexts = [
-      'current_node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
+      'current_node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -313,7 +416,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['current_node' => 'Node', 'user' => 'User']);
+      ->willReturn($this->createAvailableContextMocks(['current_node' => 'Node', 'user' => 'User']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
@@ -326,7 +429,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->expects($this->once())
       ->method('getMatchingContexts')
       ->with($expected_contexts, $context_definition)
-      ->willReturn(['current_node' => $this->createMock(ContextInterface::class)]);
+      ->willReturn(['current_node' => $this->createRuntimeContextMock('Node')]);
 
     $target_block
       ->expects($this->once())
@@ -362,8 +465,8 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn(['node' => '@current_node']);
 
     $gathered_contexts = [
-      'current_node' => $this->createMock(ContextInterface::class),
-      'user' => $this->createMock(ContextInterface::class),
+      'current_node' => $this->createRuntimeContextMock('Node'),
+      'user' => $this->createRuntimeContextMock('User'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -371,7 +474,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['current_node' => 'Node', 'user' => 'User']);
+      ->willReturn($this->createAvailableContextMocks(['current_node' => 'Node', 'user' => 'User']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
@@ -409,7 +512,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn(['node' => '@missing_context']);
 
     $gathered_contexts = [
-      '@missing_context' => $this->createMock(ContextInterface::class),
+      '@missing_context' => $this->createRuntimeContextMock('Missing Context'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -417,7 +520,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['@missing_context' => 'Missing Context']);
+      ->willReturn($this->createAvailableContextMocks(['@missing_context' => 'Missing Context']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
@@ -478,7 +581,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
       ->willReturn(['node' => 'current_node']);
 
     $gathered_contexts = [
-      'current_node' => $this->createMock(ContextInterface::class),
+      'current_node' => $this->createRuntimeContextMock('Node'),
     ];
 
     $mock_view_mode_context = $this->createMock(ContextInterface::class);
@@ -486,7 +589,7 @@ class TargetBlockContextManagerTest extends ProxyBlockUnitTestBase {
 
     $this->contextRepository
       ->method('getAvailableContexts')
-      ->willReturn(['current_node' => 'Node']);
+      ->willReturn($this->createAvailableContextMocks(['current_node' => 'Node']));
     $this->contextRepository
       ->method('getRuntimeContexts')
       ->willReturn($gathered_contexts);
