@@ -261,7 +261,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'valid_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return ['some_config' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -300,7 +300,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'invalid_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return [];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -368,7 +368,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'test_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return NULL;
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -406,7 +406,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'simple_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return ['block_setting' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
@@ -453,7 +453,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'configurable_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return ['user_setting' => 'user_value'];
         }
         // @phpstan-ignore-next-line
@@ -500,7 +500,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'context_aware_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return ['setting' => 'value'];
         }
         // @phpstan-ignore-next-line
@@ -575,7 +575,7 @@ class TargetBlockFormProcessorTest extends ProxyBlockUnitTestBase {
         if ($key === ['target_block', 'id']) {
           return 'invalid_block';
         }
-        if ($key === ['target_block', 'config']) {
+        if ($key === ['target_block', 'config', 'block_config']) {
           return ['setting' => 'value'];
         }
         $this->fail('Unexpected getValue call with key: ' . print_r($key, TRUE));
