@@ -102,7 +102,7 @@ class TargetBlockFormProcessor {
             ],
           ],
           '#status_headings' => [
-            'warning' => t('Important'),
+            'warning' => $this->t('Important'),
           ],
         ];
       }
