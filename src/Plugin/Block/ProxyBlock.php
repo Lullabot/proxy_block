@@ -297,11 +297,9 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     return $this->cacheManager->getCacheMaxAge($target_block, parent::getCacheMaxAge());
   }
 
-  public function getContextMapping() {
-    $context_mapping = $this->getConfiguration()['target_block']['config']['context_mapping'] ??= [];
-    return NestedArray::mergeDeep(parent::getContextMapping(), $context_mapping);
-  }
-
+  /**
+   * {@inheritdoc}
+   */
   public function getContext($name) {
     try {
       return parent::getContext($name);
@@ -315,6 +313,9 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function setContextMapping(array $context_mapping) {
     $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
     if ($target_block instanceof ContextAwarePluginInterface) {
