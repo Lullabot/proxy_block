@@ -345,7 +345,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   public function getContextDefinition($name) {
     $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
     if ($target_block instanceof ContextAwarePluginInterface) {
-      return $target_block->getContextDefinition('name');
+      return $target_block->getContextDefinition($name);
     }
     throw new ContextException(sprintf("The %s context is not a valid context.", $name));
   }
