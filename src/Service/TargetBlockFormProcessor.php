@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\proxy_block\Service;
 
+use Drupal\Component\Plugin\Definition\ContextAwarePluginDefinitionInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Component\Plugin\Exception\PluginException;
@@ -87,9 +88,23 @@ class TargetBlockFormProcessor {
         ];
       }
 
-      if ($target_block instanceof ContextAwarePluginInterface) {
-        $gathered_contexts = $this->contextManager->getGatheredContexts();
-        $form_elements['context_mapping'] = $this->addContextAssignmentElement($target_block, $gathered_contexts);
+      $target_definition = $target_block->getPluginDefinition();
+      $context_definitions = $target_definition instanceof ContextAwarePluginDefinitionInterface
+        ? $target_definition->getContextDefinitions()
+        : $target_definition['context_definitions'] ?? [];
+      if (!empty($context_definitions)) {
+        $form_elements['context_mapping'] = [
+          '#theme' => 'status_messages',
+          '#message_list' => [
+            'warning' => [
+              $this->t('This block needs additional settings (context mapping). See them below.'),
+              $this->t('If you are just adding the block, the additional settings are not available. Save the block, and then update it to see the additional settings.'),
+            ],
+          ],
+          '#status_headings' => [
+            'warning' => $this->t('Important'),
+          ],
+        ];
       }
 
       return $form_elements;
