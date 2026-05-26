@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\proxy_block\Plugin\Block;
 
+use Drupal\Component\Plugin\Context\ContextInterface;
+use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\Attribute\Block;
 use Drupal\Core\Block\BlockBase;
@@ -293,6 +295,71 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   public function getCacheMaxAge(): int {
     $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
     return $this->cacheManager->getCacheMaxAge($target_block, parent::getCacheMaxAge());
+  }
+
+  public function getContextMapping() {
+    $context_mapping = $this->getConfiguration()['target_block']['config']['context_mapping'] ??= [];
+    return NestedArray::mergeDeep(parent::getContextMapping(), $context_mapping);
+  }
+
+  public function getContext($name) {
+    try {
+      return parent::getContext($name);
+    }
+    catch (ContextException $e) {
+      $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
+      if ($target_block instanceof ContextAwarePluginInterface) {
+        return $target_block->getContext($name);
+      }
+      throw $e;
+    }
+  }
+
+  public function setContextMapping(array $context_mapping) {
+    $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
+    if ($target_block instanceof ContextAwarePluginInterface) {
+      $target_block->setContextMapping($context_mapping);
+    }
+    return parent::setContextMapping($context_mapping);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setContext($name, ContextInterface $context) {
+    $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
+    if ($target_block instanceof ContextAwarePluginInterface) {
+      try {
+        $target_block->setContext($name, $context);
+      }
+      catch (ContextException $e) {
+      }
+    }
+    parent::setContext($name, $context);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getContextDefinition($name) {
+    $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
+    if ($target_block instanceof ContextAwarePluginInterface) {
+      return $target_block->getContextDefinition('name');
+    }
+    throw new ContextException(sprintf("The %s context is not a valid context.", $name));
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getContextDefinitions() {
+    $target_block = $this->targetBlockFactory->getTargetBlock($this->getConfiguration());
+    if (!$target_block) {
+      return [];
+    }
+    return $target_block instanceof ContextAwarePluginInterface
+      ? $target_block->getContextDefinitions()
+      : $target_block->getPluginDefinition()['context_definition'] ?? [];
   }
 
 }
