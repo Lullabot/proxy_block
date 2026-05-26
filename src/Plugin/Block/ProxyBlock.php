@@ -360,7 +360,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     }
     return $target_block instanceof ContextAwarePluginInterface
       ? $target_block->getContextDefinitions()
-      : $target_block->getPluginDefinition()['context_definition'] ?? [];
+      : $target_block->getPluginDefinition()['context_definitions'] ?? [];
   }
 
 }
