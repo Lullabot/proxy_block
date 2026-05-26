@@ -298,7 +298,7 @@ final class ProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   public function getContextMapping() {
-    $context_mapping = $this->getConfiguration()['target_block']['config']['context_mapping'] ??= [];
+    $context_mapping = $this->getConfiguration()['target_block']['config']['context_mapping'] ?? [];
     return NestedArray::mergeDeep(parent::getContextMapping(), $context_mapping);
   }
 
